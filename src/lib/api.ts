@@ -6,7 +6,9 @@ import type {
   FinancialPreferences,
   FinancialSnapshot,
   GoogleConnection,
+  ReceiptScanResult,
   Transaction,
+  TransactionType,
 } from '../types';
 
 const API_BASE = String(import.meta.env.VITE_API_BASE_URL ?? '').trim().replace(/\/$/, '');
@@ -101,7 +103,7 @@ async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   try {
     response = await fetch(requestUrl, { ...init, headers, credentials: 'same-origin' });
   } catch (error) {
-    // Do not log headers, tokens or response bodies.  The URL and browser origin
+    // Do not log headers, tokens or response bodies. The URL and browser origin
     // are enough to diagnose a local-server mismatch during development.
     console.error('[billqo:api] network request failed', {
       path,
@@ -198,6 +200,20 @@ export const getFinancialSnapshot = (): Promise<FinancialSnapshot> => apiRequest
 export const syncFinancialSnapshot = (): Promise<FinancialSnapshot> => apiRequest<FinancialSnapshot>('/sync', jsonBody({}));
 
 export const getInsights = (): Promise<AiInsightsResponse> => apiRequest<AiInsightsResponse>('/financial-insights', jsonBody({}));
+
+export const scanReceipt = (
+  image: Blob,
+  preferredType: TransactionType,
+  categoryNames: string[],
+): Promise<ReceiptScanResult> => apiRequest<ReceiptScanResult>('/receipts/scan', {
+  method: 'POST',
+  headers: {
+    'Content-Type': image.type || 'application/octet-stream',
+    'X-Billqo-Preferred-Type': preferredType,
+    'X-Billqo-Categories': encodeURIComponent(JSON.stringify([...new Set(categoryNames)].slice(0, 50))),
+  },
+  body: image,
+});
 
 export const createTransaction = (transaction: TransactionPayload, idempotencyKey: string): Promise<Transaction> =>
   apiRequest<Transaction>('/transactions', {
