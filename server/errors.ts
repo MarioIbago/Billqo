@@ -41,6 +41,9 @@ export const errors = {
   google(message: string, cause?: unknown) {
     return new AppError(502, 'GOOGLE_ERROR', message, true, cause);
   },
+  ai(message: string, cause?: unknown) {
+    return new AppError(502, 'AI_PROVIDER_ERROR', message, true, cause);
+  },
   internal(message = 'No pudimos completar la operación. Inténtalo de nuevo.') {
     return new AppError(500, 'INTERNAL', message, true);
   },
