@@ -1,0 +1,24 @@
+# Local configuration and credential exports
+.env*
+*-firebase-adminsdk-*.json
+*-service-account*.json
+client_secret_*.json
+billqo-44f932ac4cd8.json
+
+# Local diagnostics and non-runtime source material
+*.log
+.codex-*
+archive/
+design-reference/
+tests/
+coverage/
+dist/
+server-dist/
+fix-auth.cjs
+fix-auth-2.cjs
+fix-auth-3.cjs
+fix-dashboard-ts.cjs
+restore.cjs
+restore.js
+rewrite-auth.cjs
+rewrite_dashboard.cjs

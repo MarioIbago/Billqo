@@ -1,0 +1,31 @@
+{
+  "projectId": "billqo",
+  "description": "Billqo stores each user's financial records in that user's Google Sheet. Firestore is server-only infrastructure metadata and never the financial source of truth.",
+  "entities": {
+    "googleConnections": {
+      "title": "Google Sheets connection",
+      "description": "Server-managed encrypted OAuth refresh-token metadata and the user's selected spreadsheet reference.",
+      "access": "Firebase Admin SDK only"
+    },
+    "oauthStates": {
+      "title": "Temporary OAuth state",
+      "description": "Short-lived PKCE state used once to complete a Google Sheets authorization.",
+      "access": "Firebase Admin SDK only"
+    },
+    "financialOperations": {
+      "title": "Idempotency records",
+      "description": "Short-lived server records that prevent duplicated Sheet mutations after a retry.",
+      "access": "Firebase Admin SDK only"
+    },
+    "rateLimitBuckets": {
+      "title": "Rate-limit counters",
+      "description": "Short-lived server counters keyed only by hashed subjects so all server instances enforce the same API quota.",
+      "access": "Firebase Admin SDK only"
+    }
+  },
+  "financialData": {
+    "sourceOfTruth": "Google Sheets",
+    "storage": "The signed-in user's Google Drive",
+    "firestoreStorage": "None"
+  }
+}

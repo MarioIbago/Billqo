@@ -1,0 +1,22 @@
+node_modules/
+build/
+server-dist/
+dist/
+coverage/
+api/index.js
+api/index.cjs
+api/[...path].js
+api/[...path].cjs
+.DS_Store
+*.log
+
+# Runtime configuration and credential exports. Never commit service-account
+# keys or downloaded OAuth client secrets.
+.env*
+!.env.example
+.vercel
+*-firebase-adminsdk-*.json
+*-service-account*.json
+client_secret_*.json
+# Downloaded GCP service-account export supplied for the Billqo project.
+/billqo-44f932ac4cd8.json

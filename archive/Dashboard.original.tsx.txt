@@ -1,0 +1,557 @@
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
+import {
+  AlertTriangle,
+  ArrowDownToLine,
+  ArrowRight,
+  ArrowUpFromLine,
+  BarChart3,
+  CalendarDays,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  CircleHelp,
+  CirclePlus,
+  ExternalLink,
+  FileSpreadsheet,
+  FileText,
+  House,
+  Lightbulb,
+  Link2,
+  LoaderCircle,
+  LogOut,
+  Menu,
+  MoreHorizontal,
+  Pencil,
+  PieChart,
+  Plus,
+  ReceiptText,
+  RefreshCw,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  Trash2,
+  TrendingDown,
+  TrendingUp,
+  WalletCards,
+  X,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { buildDeterministicInsights } from './analytics';
+import { GoogleStorageOnboarding } from './components/GoogleStorageOnboarding';
+import { CuantlyMark } from './components/CuantlyBrand';
+import {
+  FinancialApiError,
+  createTransaction,
+  deleteAllTransactions,
+  deleteTransaction,
+  disconnectGoogle,
+  ensureFinancialStorage,
+  getConnection,
+  getFinancialSnapshot,
+  getInsights,
+  patchTransaction,
+  saveBudget,
+  savePreferences,
+  startGoogleAuthorization,
+  syncFinancialSnapshot,
+  type TransactionPayload,
+} from './lib/api';
+import { auth } from './lib/firebase';
+import type {
+  AiInsightsResponse,
+  Category,
+  CategoryBudget,
+  CostType,
+  FinancialPreferences,
+  FinancialSnapshot,
+  FixedVariable,
+  GoogleConnection,
+  Necessity,
+  PaymentMethod,
+  Transaction,
+  TransactionType,
+} from './types';
+
+type WorkspaceView = 'dashboard' | 'transactions' | 'income' | 'expense' | 'categories' | 'analysis' | 'insights' | 'reports' | 'budgets' | 'goals' | 'settings';
+
+type NavItem = { id: WorkspaceView; label: string; icon: LucideIcon };
+
+const navItems: NavItem[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: House },
+  { id: 'transactions', label: 'Movimientos', icon: ReceiptText },
+  { id: 'income', label: 'Ingresos', icon: ArrowDownToLine },
+  { id: 'expense', label: 'Gastos', icon: ArrowUpFromLine },
+  { id: 'categories', label: 'Categorías', icon: PieChart },
+  { id: 'analysis', label: 'Análisis', icon: BarChart3 },
+  { id: 'insights', label: 'Insights', icon: Lightbulb },
+  { id: 'reports', label: 'Reportes', icon: FileText },
+  { id: 'budgets', label: 'Presupuesto', icon: WalletCards },
+  { id: 'goals', label: 'Metas', icon: Target },
+  { id: 'settings', label: 'Configuración', icon: Settings },
+];
+
+const categoryColors = ['#08a63d', '#2087e8', '#f45151', '#7d4ce0', '#11a9c9', '#f3a21d', '#df5872', '#6b7f95'];
+const paymentMethods: PaymentMethod[] = ['Tarjeta Débito', 'Tarjeta Crédito', 'Transferencia', 'Efectivo'];
+const expenseCostTypes: CostType[] = ['Fijo', 'Variable', 'Discrecional', 'Operativo', 'Hormiga'];
+
+function todayIso(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+function createClientId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function formatMoney(amount: number, currency = 'MXN'): string {
+  return new Intl.NumberFormat('es-MX', { style: 'currency', currency, maximumFractionDigits: 2 }).format(amount);
+}
+
+function initials(user?: User | null): string {
+  const source = user?.displayName || user?.email || 'Usuario';
+  return source.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase();
+}
+
+function displayName(user?: User | null): string {
+  return user?.displayName || user?.email?.split('@')[0] || 'Usuario';
+}
+
+function monthBounds(): { startDate: string; endDate: string } {
+  const now = new Date();
+  const startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+  const endDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()).padStart(2, '0')}`;
+  return { startDate, endDate };
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'No pudimos completar la operación. Inténtalo de nuevo.';
+}
+
+function pointsFor(values: number[]): string {
+  if (values.length === 0) return '3,28 97,28';
+  const max = Math.max(...values, 1);
+  return values.map((value, index) => {
+    const x = values.length === 1 ? 50 : 3 + (94 * index) / (values.length - 1);
+    const y = 28 - (value / max) * 22;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+}
+
+function MetricCard({ label, value, detail, color, icon, values, tone = 'neutral' }: {
+  label: string;
+  value: string;
+  detail: string;
+  color: string;
+  icon: React.ReactNode;
+  values: number[];
+  tone?: 'positive' | 'negative' | 'neutral';
+}) {
+  return (
+    <article className="metric-card">
+      <div className="metric-card-top">
+        <div className="metric-icon" style={{ backgroundColor: color }}>{icon}</div>
+        <div className="metric-copy"><span>{label}</span><strong>{value}</strong><small className={`metric-trend ${tone}`}>{detail}</small></div>
+      </div>
+      <svg className="mini-sparkline" viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true">
+        <polyline points={pointsFor(values)} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </article>
+  );
+}
+
+function CardHeader({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
+  return <div className="card-header"><h2>{title} <CircleHelp size={12} /></h2>{action && <button type="button" className="outline-action" onClick={onAction}>{action}</button>}</div>;
+}
+
+function EmptyChart({ label }: { label: string }) {
+  return <div className="empty-chart"><FileSpreadsheet size={18} /><span>{label}</span></div>;
+}
+
+function IncomeExpenseChart({ transactions, currency }: { transactions: Transaction[]; currency: string }) {
+  const series = useMemo(() => {
+    const dates = [...new Set(transactions.map((transaction) => transaction.date))].sort().slice(-8);
+    return dates.map((date) => ({
+      date,
+      income: transactions.filter((transaction) => transaction.date === date && transaction.type === 'income').reduce((total, transaction) => total + transaction.amount, 0),
+      expense: transactions.filter((transaction) => transaction.date === date && transaction.type === 'expense').reduce((total, transaction) => total + transaction.amount, 0),
+    }));
+  }, [transactions]);
+
+  if (series.length === 0) return <EmptyChart label="Aún no hay movimientos para graficar." />;
+  const maximum = Math.max(...series.flatMap((item) => [item.income, item.expense]), 1);
+  const pathFor = (key: 'income' | 'expense') => series.map((item, index) => {
+    const x = series.length === 1 ? 290 : 14 + (552 * index) / (series.length - 1);
+    const y = 182 - (item[key] / maximum) * 150;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  return (
+    <div className="income-chart-wrap">
+      <div className="chart-legend"><span><i className="legend-dot green" />Ingresos</span><span><i className="legend-dot red" />Gastos</span><label>Fuente: <b>Google Sheet</b></label></div>
+      <svg className="line-chart" viewBox="0 0 580 210" role="img" aria-label="Ingresos y gastos registrados">
+        {[32, 70, 108, 146, 184].map((y) => <line key={y} x1="14" x2="566" y1={y} y2={y} className="chart-grid-line" />)}
+        <polyline points={pathFor('income')} fill="none" stroke="#0aa83d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <polyline points={pathFor('expense')} fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <text x="14" y="202">{series[0]?.date.slice(5).replace('-', '/')}</text>
+        <text x="500" y="202">{series.at(-1)?.date.slice(5).replace('-', '/')}</text>
+        <text x="14" y="21">{formatMoney(maximum, currency)}</text>
+      </svg>
+    </div>
+  );
+}
+
+type CategorySlice = { name: string; amount: number; percentage: number; color: string };
+
+function DonutChart({ slices, total, currency, expanded, onToggle }: {
+  slices: CategorySlice[];
+  total: number;
+  currency: string;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  if (slices.length === 0) return <EmptyChart label="Los gastos por categoría aparecerán aquí." />;
+  const radius = 54;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
+  const visible = expanded ? slices : slices.slice(0, 5);
+  return (
+    <div className="category-chart-content">
+      <div className="donut-wrap"><svg className="donut" viewBox="0 0 160 160" role="img" aria-label="Distribución real de gastos por categoría">
+        <circle cx="80" cy="80" r={radius} fill="none" stroke="#edf0f2" strokeWidth="22" />
+        {slices.map((slice) => {
+          const length = circumference * (slice.percentage / 100);
+          const currentOffset = offset;
+          offset += length;
+          return <circle key={slice.name} cx="80" cy="80" r={radius} fill="none" stroke={slice.color} strokeWidth="22" strokeDasharray={`${length} ${circumference - length}`} strokeDashoffset={-currentOffset} transform="rotate(-90 80 80)" />;
+        })}
+        <text x="80" y="78" textAnchor="middle" className="donut-total">{formatMoney(total, currency)}</text><text x="80" y="95" textAnchor="middle" className="donut-label">Total</text>
+      </svg></div>
+      <div className="category-legend">
+        {visible.map((slice) => <div className="category-row" key={slice.name}><span className="category-name"><i style={{ background: slice.color }} />{slice.name}</span><span>{slice.percentage.toFixed(1)}% <em>({formatMoney(slice.amount, currency)})</em></span></div>)}
+        {slices.length > 5 && <button type="button" className="category-toggle" onClick={onToggle}>{expanded ? 'Ocultar detalle' : 'Ver detalle'}</button>}
+      </div>
+    </div>
+  );
+}
+
+function InsightsCard({ data, showAll, onShowAll }: { data: AiInsightsResponse; showAll: boolean; onShowAll: () => void }) {
+  const visible = showAll ? data.insights : data.insights.slice(0, 3);
+  const iconFor = (type: string) => type === 'warning' || type === 'alert' ? AlertTriangle : type === 'positive' ? TrendingUp : Lightbulb;
+  const toneFor = (type: string) => type === 'warning' || type === 'alert' ? 'orange' : type === 'positive' ? 'green' : 'blue';
+  return <section className="chart-card insights-card"><CardHeader title="Insights destacados" />
+    <div className="insight-list">{visible.map((insight) => { const Icon = iconFor(insight.type); const tone = toneFor(insight.type); return <article className="insight-item" key={`${insight.title}-${insight.description}`}><span className={`insight-icon ${tone}`}><Icon size={20} /></span><div><strong>{insight.title}</strong><p>{insight.description}</p></div></article>; })}</div>
+    {data.insights.length > 3 && <button type="button" className="text-action" onClick={onShowAll}>{showAll ? 'Ver menos' : 'Ver todos los insights'} <ArrowRight size={13} /></button>}
+  </section>;
+}
+
+function CategoryTable({ slices, currency }: { slices: CategorySlice[]; currency: string }) {
+  return <section className="chart-card top-categories-card"><CardHeader title="Top categorías" />
+    {slices.length === 0 ? <EmptyChart label="Aún no hay gastos válidos." /> : <table className="category-table"><thead><tr><th>#</th><th>Categoría</th><th>Monto</th><th>% del total</th></tr></thead><tbody>{slices.slice(0, 6).map((slice, index) => <tr key={slice.name}><td>{index + 1}</td><td>{slice.name}</td><td>{formatMoney(slice.amount, currency)}</td><td>{slice.percentage.toFixed(1)}%</td></tr>)}</tbody></table>}
+  </section>;
+}
+
+function DataQualityCard({ snapshot }: { snapshot: FinancialSnapshot }) {
+  return <section className="chart-card data-quality-card"><CardHeader title="Calidad del archivo" />
+    {snapshot.validationIssues.length === 0 ? <div className="quality-ok"><CheckCircle2 size={20} /><span>Las filas leídas cumplen con la estructura esperada.</span></div> : <div className="quality-issues"><AlertTriangle size={18} /><div><strong>{snapshot.validationIssues.length} fila(s) excluida(s) de las métricas</strong>{snapshot.validationIssues.slice(0, 2).map((issue) => <small key={`${issue.sheet}-${issue.row}-${issue.message}`}>{issue.sheet}, fila {issue.row}: {issue.message}</small>)}</div></div>}
+  </section>;
+}
+
+function MobileSurface({ snapshot, onAdd }: { snapshot: FinancialSnapshot; onAdd: () => void }) {
+  const { analytics, preferences, transactions } = snapshot;
+  return <section className="mobile-surface" aria-label="Resumen financiero móvil">
+    <div className="mobile-summary-grid"><article><span className="mobile-summary-icon blue"><WalletCards size={15} /></span><div><small>Balance</small><strong>{formatMoney(analytics.netBalance, preferences.currency)}</strong><em>Datos reales</em></div></article><article><span className="mobile-summary-icon orange">%</span><div><small>Ahorro</small><strong>{analytics.savingsRate === null ? '—' : `${analytics.savingsRate.toFixed(1)}%`}</strong><em>Datos reales</em></div></article></div>
+    <section className="chart-card mobile-income-card"><CardHeader title="Ingresos vs Gastos" /><IncomeExpenseChart transactions={transactions} currency={preferences.currency} /></section>
+    <section className="chart-card mobile-movements-card"><div className="phone-section-heading"><strong>Últimos movimientos</strong><button type="button" onClick={onAdd}>Nuevo</button></div>{transactions.length === 0 ? <EmptyChart label="Registra tu primer movimiento." /> : transactions.slice(0, 4).map((transaction) => <div className="mobile-transaction" key={transaction.id}><span className={`phone-transaction-icon ${transaction.type === 'income' ? 'green' : 'orange'}`}><ReceiptText size={13} /></span><div><b>{transaction.description}</b><small>{transaction.date} · {transaction.category}</small></div><strong className={transaction.type === 'income' ? 'income' : 'expense'}>{transaction.type === 'income' ? '+' : '-'}{formatMoney(transaction.amount, preferences.currency)}</strong></div>)}</section>
+  </section>;
+}
+
+function TransactionEditor({ transaction, categories, onClose, onSave }: { key?: React.Key;
+  transaction?: Transaction;
+  categories: Category[];
+  onClose: () => void;
+  onSave: (payload: TransactionPayload, idempotencyKey: string) => Promise<void>;
+}) {
+  const initialType: TransactionType = transaction?.type ?? 'expense';
+  const startingCategory = categories.find((category) => category.id === transaction?.categoryId) ?? categories.find((category) => category.type === initialType);
+  const [type, setType] = useState<TransactionType>(initialType);
+  const [description, setDescription] = useState(transaction?.description ?? '');
+  const [amount, setAmount] = useState(transaction ? String(transaction.amount) : '');
+  const [categoryId, setCategoryId] = useState(startingCategory?.id ?? '');
+  const [costType, setCostType] = useState<CostType>(transaction?.costType ?? (initialType === 'income' ? 'Ingreso' : 'Variable'));
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(transaction?.paymentMethod ?? 'Tarjeta Débito');
+  const [date, setDate] = useState(transaction?.date ?? todayIso());
+  const [fixedVariable, setFixedVariable] = useState<FixedVariable>(transaction?.fixedVariable ?? 'Variable');
+  const [necessity, setNecessity] = useState<Necessity>(transaction?.necessity ?? 'Necesario');
+  const [influence, setInfluence] = useState<1 | 2 | 3 | 4 | 5>(transaction?.influence ?? 3);
+  const [account, setAccount] = useState(transaction?.account ?? '');
+  const [notes, setNotes] = useState(transaction?.notes ?? '');
+  const [tags, setTags] = useState(transaction?.tags?.join(', ') ?? '');
+  const [recurring, setRecurring] = useState(Boolean(transaction?.recurring));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string>();
+  const idempotencyKey = useRef(createClientId());
+
+  const typeCategories = categories.filter((category) => category.type === type && category.active);
+  const switchType = (nextType: TransactionType) => {
+    setType(nextType);
+    setCategoryId(categories.find((category) => category.type === nextType && category.active)?.id ?? '');
+    setCostType(nextType === 'income' ? 'Ingreso' : 'Variable');
+  };
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const category = typeCategories.find((item) => item.id === categoryId);
+    if (!category) {
+      setError('Selecciona una categoría disponible.');
+      return;
+    }
+    const parsedAmount = Number(amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      setError('Ingresa un monto mayor que cero.');
+      return;
+    }
+    setSaving(true);
+    setError(undefined);
+    try {
+      await onSave({
+        description,
+        amount: parsedAmount,
+        type,
+        categoryId: category.id,
+        category: category.name,
+        costType: type === 'income' ? 'Ingreso' : costType,
+        fixedVariable: type === 'expense' ? fixedVariable : undefined,
+        necessity: type === 'expense' ? necessity : undefined,
+        influence: type === 'expense' ? influence : undefined,
+        paymentMethod,
+        date,
+        account: account || undefined,
+        notes: notes || undefined,
+        tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean),
+        recurring,
+      }, idempotencyKey.current);
+      onClose();
+    } catch (caught) {
+      setError(errorMessage(caught));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (!saving && event.target === event.currentTarget) onClose(); }}>
+    <section className="movement-modal movement-modal-wide" role="dialog" aria-modal="true" aria-labelledby="movement-title">
+      <div className="modal-heading"><div><span className="modal-kicker">{transaction ? 'Edición confirmada en Google Sheets' : 'Registro en Google Sheets'}</span><h2 id="movement-title">{transaction ? 'Editar movimiento' : 'Nuevo movimiento'}</h2></div><button type="button" className="modal-close" onClick={onClose} disabled={saving} aria-label="Cerrar"><X size={18} /></button></div>
+      <form onSubmit={submit} className="movement-form">
+        <div className="movement-type-toggle"><button type="button" className={type === 'expense' ? 'is-active expense' : ''} onClick={() => switchType('expense')} disabled={saving}>Gasto</button><button type="button" className={type === 'income' ? 'is-active income' : ''} onClick={() => switchType('income')} disabled={saving}>Ingreso</button></div>
+        {error && <p className="form-error" role="alert">{error}</p>}
+        <div className="movement-fields-grid"><label>Concepto<input autoFocus required value={description} onChange={(event) => setDescription(event.target.value)} disabled={saving} maxLength={240} /></label><label>Monto<input required type="number" min="0.01" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} disabled={saving} /></label></div>
+        <div className="movement-fields-grid"><label>Categoría<select value={categoryId} onChange={(event) => setCategoryId(event.target.value)} disabled={saving}>{typeCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label><label>Método de pago<select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value as PaymentMethod)} disabled={saving}>{paymentMethods.map((method) => <option key={method} value={method}>{method}</option>)}</select></label></div>
+        <div className="movement-fields-grid"><label>Fecha<input type="date" value={date} onChange={(event) => setDate(event.target.value)} disabled={saving} /></label>{type === 'expense' ? <label>Clasificación<select value={costType} onChange={(event) => setCostType(event.target.value as CostType)} disabled={saving}>{expenseCostTypes.map((item) => <option key={item} value={item}>{item}</option>)}</select></label> : <label>Clasificación<input value="Ingreso" disabled /></label>}</div>
+        {type === 'expense' && <><div className="movement-fields-grid"><label>Fijo o variable<select value={fixedVariable} onChange={(event) => setFixedVariable(event.target.value as FixedVariable)} disabled={saving}><option value="Fijo">Fijo</option><option value="Variable">Variable</option></select></label><label>Necesidad<select value={necessity} onChange={(event) => setNecessity(event.target.value as Necessity)} disabled={saving}><option value="Necesario">Necesario</option><option value="Innecesario">Innecesario</option></select></label></div><label>Influencia al decidir (1 a 5)<select value={influence} onChange={(event) => setInfluence(Number(event.target.value) as 1 | 2 | 3 | 4 | 5)} disabled={saving}>{[1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value}</option>)}</select></label></>}
+        <details className="movement-details"><summary>Más detalles</summary><div className="movement-fields-grid"><label>Cuenta<input value={account} onChange={(event) => setAccount(event.target.value)} disabled={saving} maxLength={120} /></label><label>Etiquetas (separadas por coma)<input value={tags} onChange={(event) => setTags(event.target.value)} disabled={saving} /></label></div><label>Notas<textarea value={notes} onChange={(event) => setNotes(event.target.value)} disabled={saving} maxLength={2000} /></label><label className="checkbox-label"><input type="checkbox" checked={recurring} onChange={(event) => setRecurring(event.target.checked)} disabled={saving} /> Guardar como definición recurrente mensual (sin generación automática)</label></details>
+        <div className="modal-actions"><button type="button" className="secondary-button" onClick={onClose} disabled={saving}>Cancelar</button><button type="submit" className="primary-button" disabled={saving}>{saving ? <><LoaderCircle className="spin" size={16} />Guardando en Sheets…</> : <><Plus size={16} />{transaction ? 'Guardar cambios' : 'Añadir movimiento'}</>}</button></div>
+      </form>
+    </section>
+  </div>;
+}
+
+function TransactionsPanel({ transactions, currency, filter, onAdd, onEdit, onDelete }: {
+  transactions: Transaction[];
+  currency: string;
+  filter?: TransactionType;
+  onAdd: () => void;
+  onEdit: (transaction: Transaction) => void;
+  onDelete: (transaction: Transaction) => Promise<void>;
+}) {
+  const [search, setSearch] = useState('');
+  const filtered = transactions.filter((transaction) => (!filter || transaction.type === filter) && `${transaction.description} ${transaction.category} ${transaction.notes ?? ''}`.toLowerCase().includes(search.toLowerCase()));
+  return <section className="workspace-panel"><div className="workspace-panel-heading"><div><span className="panel-kicker">Google Sheets</span><h2>{filter === 'income' ? 'Ingresos' : filter === 'expense' ? 'Gastos' : 'Movimientos'}</h2><p>Los cambios se escriben en el archivo antes de confirmarse aquí.</p></div><button type="button" className="primary-button" onClick={onAdd}><Plus size={15} />Nuevo movimiento</button></div>
+    <div className="workspace-toolbar"><label>Buscar<input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Concepto, categoría o nota" /></label><span>{filtered.length} registro(s) válido(s)</span></div>
+    <div className="finance-table-wrap"><table className="finance-table"><thead><tr><th>Fecha</th><th>Concepto</th><th>Tipo</th><th>Categoría</th><th>Monto</th><th>Acciones</th></tr></thead><tbody>{filtered.length === 0 ? <tr><td colSpan={6} className="table-empty">No hay movimientos que mostrar.</td></tr> : filtered.map((transaction) => <tr key={transaction.id}><td>{transaction.date}</td><td><strong>{transaction.description}</strong><small>{transaction.paymentMethod}</small></td><td><span className={`transaction-pill ${transaction.type}`}>{transaction.type === 'income' ? 'Ingreso' : 'Gasto'}</span></td><td>{transaction.category}</td><td className={transaction.type === 'income' ? 'amount-income' : 'amount-expense'}>{transaction.type === 'income' ? '+' : '-'}{formatMoney(transaction.amount, currency)}</td><td><div className="table-actions"><button type="button" title="Editar" onClick={() => onEdit(transaction)}><Pencil size={14} /></button><button type="button" title="Eliminar lógicamente" className="danger" onClick={() => void onDelete(transaction)}><Trash2 size={14} /></button></div></td></tr>)}</tbody></table></div>
+  </section>;
+}
+
+function CategoriesPanel({ categories }: { categories: Category[] }) {
+  return <section className="workspace-panel"><div className="workspace-panel-heading"><div><span className="panel-kicker">Estructura del archivo</span><h2>Categorías</h2><p>Estas categorías se leen directamente desde la pestaña CATEGORÍAS.</p></div></div><div className="category-chip-grid">{categories.map((category) => <span key={category.id} className={`category-chip ${category.type}`}><i />{category.name}<small>{category.type === 'income' ? 'Ingreso' : 'Gasto'}</small></span>)}</div></section>;
+}
+
+function BudgetPanel({ categories, budgets, preferences, onSave }: { key?: React.Key;
+  categories: Category[];
+  budgets: CategoryBudget[];
+  preferences: FinancialPreferences;
+  onSave: (id: string, categoryId: string, amount: number, expectedUpdatedAt?: string) => Promise<void>;
+}) {
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState<string>();
+  const [error, setError] = useState<string>();
+  const budgetByCategory = new Map(budgets.filter((budget) => budget.active !== false && !budget.deletedAt).map((budget) => [budget.categoryId, budget]));
+  const expenseCategories = categories.filter((category) => category.type === 'expense' && category.active);
+  const save = async (category: Category) => {
+    const budget = budgetByCategory.get(category.id);
+    const amount = Number(drafts[category.id] ?? budget?.allocatedAmount ?? 0);
+    if (!Number.isFinite(amount) || amount < 0) { setError('El límite debe ser un número igual o mayor que cero.'); return; }
+    setSaving(category.id); setError(undefined);
+    try { await onSave(budget?.id ?? createClientId(), category.id, amount, budget?.updatedAt); } catch (caught) { setError(errorMessage(caught)); } finally { setSaving(undefined); }
+  };
+  return <section className="workspace-panel"><div className="workspace-panel-heading"><div><span className="panel-kicker">PRESUPUESTOS</span><h2>Presupuesto por categoría</h2><p>El gasto acumulado se calcula desde movimientos activos del periodo del archivo.</p></div><strong className="global-budget">Global: {formatMoney(preferences.monthlyBudget, preferences.currency)}</strong></div>{error && <p className="form-error">{error}</p>}<div className="budget-grid">{expenseCategories.map((category) => { const budget = budgetByCategory.get(category.id); const limit = budget?.allocatedAmount ?? 0; const spent = budget?.spentAmount ?? 0; const percentage = limit > 0 ? (spent / limit) * 100 : 0; return <article className="budget-item" key={category.id}><div><strong>{category.name}</strong><small>Gastado: {formatMoney(spent, preferences.currency)}</small></div><div className="budget-input-row"><input type="number" min="0" step="0.01" value={drafts[category.id] ?? String(limit)} onChange={(event) => setDrafts((current) => ({ ...current, [category.id]: event.target.value }))} /><button type="button" onClick={() => void save(category)} disabled={saving === category.id}>{saving === category.id ? '…' : 'Guardar'}</button></div><div className="budget-progress"><i style={{ width: `${Math.min(100, percentage)}%` }} /></div><small>{limit > 0 ? `${percentage.toFixed(1)}% del límite` : 'Sin límite configurado'}</small></article>; })}</div></section>;
+}
+
+function SettingsPanel({ connection, preferences, syncedAt, onSync, onSavePreferences, onReconnect, onDisconnect, onSignOut, onDeleteAll }: { key?: React.Key;
+  connection: GoogleConnection;
+  preferences: FinancialPreferences;
+  syncedAt: string;
+  onSync: () => Promise<void>;
+  onSavePreferences: (preferences: Partial<FinancialPreferences>, expectedUpdatedAt: string) => Promise<void>;
+  onReconnect: () => Promise<void>;
+  onDisconnect: () => Promise<void>;
+  onSignOut: () => Promise<void>;
+  onDeleteAll: () => Promise<void>;
+}) {
+  const [currency, setCurrency] = useState(preferences.currency);
+  const [dateFormat, setDateFormat] = useState(preferences.dateFormat);
+  const [timezone, setTimezone] = useState(preferences.timezone);
+  const [monthlyBudget, setMonthlyBudget] = useState(String(preferences.monthlyBudget));
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string>();
+  const submit = async (event: React.FormEvent) => { event.preventDefault(); setBusy(true); setMessage(undefined); try { if (!preferences.updatedAt) throw new Error('La versión de la configuración no está disponible. Sincroniza e inténtalo de nuevo.'); await onSavePreferences({ currency, dateFormat, timezone, monthlyBudget: Number(monthlyBudget) }, preferences.updatedAt); setMessage('Configuración guardada en la pestaña CONFIGURACIÓN.'); } catch (caught) { setMessage(errorMessage(caught)); } finally { setBusy(false); } };
+  const run = async (operation: () => Promise<void>) => { setBusy(true); setMessage(undefined); try { await operation(); } catch (caught) { setMessage(errorMessage(caught)); } finally { setBusy(false); } };
+  return <section className="workspace-panel"><div className="workspace-panel-heading"><div><span className="panel-kicker">Conexión y preferencias</span><h2>Configuración</h2><p>Última sincronización: {new Date(syncedAt).toLocaleString('es-MX')}</p></div><span className="connection-badge"><CheckCircle2 size={14} />{connection.status === 'connected' ? 'Archivo conectado' : connection.status}</span></div>{message && <p className="settings-message">{message}</p>}<div className="settings-grid"><form onSubmit={submit} className="settings-card"><h3>Preferencias del archivo</h3><label>Moneda<input value={currency} onChange={(event) => setCurrency(event.target.value)} disabled={busy} /></label><label>Formato de fecha<input value={dateFormat} onChange={(event) => setDateFormat(event.target.value)} disabled={busy} /></label><label>Zona horaria<input value={timezone} onChange={(event) => setTimezone(event.target.value)} disabled={busy} /></label><label>Presupuesto global<input type="number" min="0" step="0.01" value={monthlyBudget} onChange={(event) => setMonthlyBudget(event.target.value)} disabled={busy} /></label><button type="submit" className="primary-button" disabled={busy}>Guardar preferencias</button></form><div className="settings-card"><h3>Google Sheets</h3><p>El archivo es tuyo y permanece en Drive incluso si desconectas esta aplicación.</p><button type="button" className="toolbar-button" disabled={!connection.spreadsheetUrl || busy} onClick={() => { if (connection.spreadsheetUrl) window.open(connection.spreadsheetUrl, '_blank', 'noopener,noreferrer'); }}><ExternalLink size={15} />Abrir Sheet</button><button type="button" className="toolbar-button" disabled={busy} onClick={() => void run(onSync)}><RefreshCw size={15} />Sincronizar</button><button type="button" className="toolbar-button" disabled={busy} onClick={() => void run(onReconnect)}><Link2 size={15} />Reconectar</button><button type="button" className="toolbar-button danger-button" disabled={busy} onClick={() => { if (window.confirm('Se revocará la conexión técnica. El archivo seguirá en tu Drive.')) void run(onDisconnect); }}><X size={15} />Desconectar</button></div><div className="settings-card"><h3>Sesión y datos</h3><p>Cerrar sesión solo termina Firebase Authentication. Las eliminaciones son lógicas en Google Sheets.</p><button type="button" className="toolbar-button danger-button" disabled={busy} onClick={() => { if (window.confirm('Se marcarán como eliminados todos los movimientos activos.')) void run(onDeleteAll); }}><Trash2 size={15} />Eliminar movimientos</button><button type="button" className="toolbar-button" disabled={busy} onClick={() => void run(onSignOut)}><LogOut size={15} />Cerrar sesión</button></div></div></section>;
+}
+
+function DashboardOverview({ snapshot, insights, onAdd, onShowIssues }: { snapshot: FinancialSnapshot; insights: AiInsightsResponse; onAdd: () => void; onShowIssues: () => void }) {
+  const { analytics, preferences, transactions } = snapshot;
+  const slices = analytics.expensesByCategory.map((item, index) => ({ ...item, name: item.category, color: categoryColors[index % categoryColors.length]! }));
+  const monthlyValues = analytics.monthlyExpenses.map((item) => item.amount);
+  const expenseChange = analytics.percentageChange;
+  const [expanded, setExpanded] = useState(false);
+  return <><MobileSurface snapshot={snapshot} onAdd={onAdd} /><section className="metrics-grid" aria-label="Resumen financiero real"><MetricCard label="Ingresos totales" value={formatMoney(analytics.totalIncome, preferences.currency)} detail="Datos del archivo" color="#0aa83d" icon={<ArrowDownToLine size={20} />} values={monthlyValues} /><MetricCard label="Gastos totales" value={formatMoney(analytics.totalExpenses, preferences.currency)} detail={expenseChange === null ? 'Sin periodo comparable' : `${expenseChange >= 0 ? '↑' : '↓'} ${Math.abs(expenseChange).toFixed(1)}% vs periodo previo`} tone={expenseChange === null ? 'neutral' : expenseChange > 0 ? 'negative' : 'positive'} color="#ef4444" icon={<ArrowUpFromLine size={20} />} values={monthlyValues} /><MetricCard label="Balance" value={formatMoney(analytics.netBalance, preferences.currency)} detail="Ingresos menos gastos" tone={analytics.netBalance >= 0 ? 'positive' : 'negative'} color="#2087e8" icon={<WalletCards size={20} />} values={monthlyValues} /><MetricCard label="Porcentaje de ahorro" value={analytics.savingsRate === null ? '—' : `${analytics.savingsRate.toFixed(1)}%`} detail="Calculado con registros válidos" color="#f08a19" icon={<span className="metric-symbol">%</span>} values={monthlyValues} /><MetricCard label="Prom. gasto diario" value={formatMoney(analytics.averageDailyExpense, preferences.currency)} detail="Días con gasto registrado" color="#7d4ce0" icon={<CalendarDays size={20} />} values={analytics.weeklyExpenses.map((item) => item.amount)} /><MetricCard label="Influencia promedio" value={analytics.averageInfluence === null ? '—' : `${analytics.averageInfluence.toFixed(1)} / 5`} detail="Solo gastos con influencia" color="#11a9c9" icon={<Sparkles size={20} />} values={analytics.weeklyExpenses.map((item) => item.amount)} /></section><section className="primary-grid"><section className="chart-card income-expense-card"><CardHeader title="Ingresos vs Gastos" /><IncomeExpenseChart transactions={transactions} currency={preferences.currency} /></section><section className="chart-card category-card"><CardHeader title="Gastos por categoría" /><DonutChart slices={slices} total={analytics.totalExpenses} currency={preferences.currency} expanded={expanded} onToggle={() => setExpanded((current) => !current)} /></section><InsightsCard data={insights} showAll={false} onShowAll={() => undefined} /></section><section className="secondary-grid"><CategoryTable slices={slices} currency={preferences.currency} /><section className="chart-card small-chart-card"><CardHeader title="Flujo de dinero" /><div className="flow-summary"><div><span>Ingresos</span><strong>{formatMoney(analytics.totalIncome, preferences.currency)}</strong></div><ArrowRight size={20} /><div><span>Gastos</span><strong>{formatMoney(analytics.totalExpenses, preferences.currency)}</strong></div><ArrowRight size={20} /><div><span>Balance</span><strong>{formatMoney(analytics.netBalance, preferences.currency)}</strong></div></div></section><section className="chart-card small-chart-card"><CardHeader title="Influencia del impulso" /><div className="influence-score"><span>Nivel promedio</span><strong>{analytics.averageInfluence === null ? '—' : analytics.averageInfluence.toFixed(1)}<small>{analytics.averageInfluence === null ? '' : ' / 5'}</small></strong><b>{analytics.highInfluenceExpensePercentage === null ? 'Sin datos suficientes' : `${analytics.highInfluenceExpensePercentage.toFixed(1)}% con influencia alta`}</b></div></section><DataQualityCard snapshot={snapshot} /></section><section className="dashboard-actions"><button type="button" className="toolbar-button" onClick={onAdd}><Plus size={15} />Registrar movimiento</button><button type="button" className="toolbar-button" onClick={onShowIssues}><AlertTriangle size={15} />Ver validaciones ({snapshot.validationIssues.length})</button></section></>;
+}
+
+function LoadingScreen({ message }: { message: string }) {
+  return <main className="loading-screen"><LoaderCircle className="spin" size={26} /><p>{message}</p></main>;
+}
+
+export function Dashboard() {
+  const navigate = useNavigate();
+  const [user, setUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [connection, setConnection] = useState<GoogleConnection>();
+  const [snapshot, setSnapshot] = useState<FinancialSnapshot>();
+  const [view, setView] = useState<WorkspaceView>('dashboard');
+  const [editing, setEditing] = useState<Transaction>();
+  const [isEditorOpen, setEditorOpen] = useState(false);
+  const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [loadingConnection, setLoadingConnection] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [error, setError] = useState<string>();
+  const [toast, setToast] = useState('');
+  const [insights, setInsights] = useState<AiInsightsResponse>();
+  const initialising = useRef(false);
+
+  const showToast = useCallback((message: string) => { setToast(message); window.setTimeout(() => setToast(''), 3500); }, []);
+
+  const refreshSnapshot = useCallback(async (notice = false) => {
+    setSyncing(true);
+    try {
+      const next = await (notice ? syncFinancialSnapshot() : getFinancialSnapshot());
+      setSnapshot(next);
+      setInsights(buildDeterministicInsights(next.analytics, next.transactions));
+      setError(undefined);
+      if (notice) showToast('Sincronización terminada.');
+      return next;
+    } catch (caught) {
+      const apiError = caught instanceof FinancialApiError ? caught : undefined;
+      if (apiError?.code === 'GOOGLE_REAUTH_REQUIRED') setConnection((current) => ({ ...current, status: 'reauth_required' }));
+      setError(errorMessage(caught));
+      throw caught;
+    } finally { setSyncing(false); }
+  }, [showToast]);
+
+  const ensureStorage = useCallback(async () => {
+    setLoadingConnection(true); setError(undefined);
+    try {
+      const nextConnection = await ensureFinancialStorage();
+      setConnection(nextConnection);
+      await refreshSnapshot();
+      showToast('Tu archivo financiero está listo.');
+    } catch (caught) { setError(errorMessage(caught)); throw caught; } finally { setLoadingConnection(false); }
+  }, [refreshSnapshot, showToast]);
+
+  const loadConnection = useCallback(async () => {
+    setLoadingConnection(true); setError(undefined);
+    try {
+      const nextConnection = await getConnection();
+      setConnection(nextConnection);
+      if (nextConnection.status === 'connected') await refreshSnapshot();
+      if (nextConnection.status === 'authorized') await ensureStorage();
+    } catch (caught) { setError(errorMessage(caught)); } finally { setLoadingConnection(false); }
+  }, [ensureStorage, refreshSnapshot]);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
+      setUser(nextUser); setAuthReady(true);
+      if (!nextUser) { navigate('/auth', { replace: true }); return; }
+      if (!initialising.current) { initialising.current = true; void loadConnection(); }
+    });
+    return unsubscribe;
+  }, [loadConnection, navigate]);
+
+  useEffect(() => {
+    const onFocus = () => { if (connection?.status === 'connected') void refreshSnapshot(); };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [connection?.status, refreshSnapshot]);
+
+  const startAuthorization = useCallback(async () => {
+    setLoadingConnection(true); setError(undefined);
+    try { const { authorizationUrl } = await startGoogleAuthorization(); window.location.assign(authorizationUrl); } catch (caught) { setError(errorMessage(caught)); throw caught; } finally { setLoadingConnection(false); }
+  }, []);
+
+  const saveTransaction = async (payload: TransactionPayload, idempotencyKey: string) => {
+    if (editing) await patchTransaction(editing.id, editing.updatedAt, payload);
+    else await createTransaction(payload, idempotencyKey);
+    await refreshSnapshot(true);
+    showToast(editing ? 'Movimiento actualizado en Google Sheets.' : 'Movimiento guardado en Google Sheets.');
+  };
+
+  const removeTransaction = async (transaction: Transaction) => {
+    if (!window.confirm(`¿Marcar “${transaction.description}” como eliminado?`)) return;
+    try { await deleteTransaction(transaction.id, transaction.updatedAt); await refreshSnapshot(true); showToast('Movimiento eliminado lógicamente.'); } catch (caught) { if (caught instanceof FinancialApiError && caught.code === 'CONFLICT') void refreshSnapshot(true).catch(() => undefined); showToast(errorMessage(caught)); }
+  };
+
+  const removeAll = async () => { await deleteAllTransactions(); await refreshSnapshot(true); showToast('Los movimientos se marcaron como eliminados.'); };
+  const saveBudgetForCategory = async (id: string, categoryId: string, amount: number, expectedUpdatedAt?: string) => { const range = monthBounds(); await saveBudget(id, { categoryId, amount, period: 'Mensual', ...range, active: true }, expectedUpdatedAt); await refreshSnapshot(true); };
+  const saveSheetPreferences = async (preferences: Partial<FinancialPreferences>, expectedUpdatedAt: string) => { await savePreferences(preferences, expectedUpdatedAt); await refreshSnapshot(true); };
+  const reconnect = async () => { await startAuthorization(); };
+  const disconnect = async () => { await disconnectGoogle(); setConnection({ status: 'not_connected' }); setSnapshot(undefined); setInsights(undefined); showToast('La conexión se eliminó. Tu archivo sigue en Google Drive.'); };
+  const signOutUser = async () => { await signOut(auth); navigate('/auth', { replace: true }); };
+
+  const currentInsights = insights ?? (snapshot ? buildDeterministicInsights(snapshot.analytics, snapshot.transactions) : undefined);
+  const openEditor = (transaction?: Transaction) => { setEditing(transaction); setEditorOpen(true); };
+  const closeEditor = () => { setEditorOpen(false); setEditing(undefined); };
+  const selectView = (next: WorkspaceView) => { setView(next); setMobileMenuOpen(false); if (next === 'insights' && snapshot) { void getInsights().then(setInsights).catch(() => undefined); } };
+
+  if (!authReady) return <LoadingScreen message="Comprobando tu sesión…" />;
+  if (!user) return null;
+  if (!connection || (loadingConnection && !snapshot)) return <LoadingScreen message="Preparando tu conexión segura…" />;
+  if (connection.status !== 'connected' || !snapshot) return <GoogleStorageOnboarding connection={connection} busy={loadingConnection} error={error} onAuthorize={startAuthorization} onEnsure={ensureStorage} />;
+
+  const greeting = displayName(user);
+  const renderView = () => {
+    if (view === 'transactions') return <TransactionsPanel transactions={snapshot.transactions} currency={snapshot.preferences.currency} onAdd={() => openEditor()} onEdit={openEditor} onDelete={removeTransaction} />;
+    if (view === 'income') return <TransactionsPanel transactions={snapshot.transactions} currency={snapshot.preferences.currency} filter="income" onAdd={() => openEditor()} onEdit={openEditor} onDelete={removeTransaction} />;
+    if (view === 'expense') return <TransactionsPanel transactions={snapshot.transactions} currency={snapshot.preferences.currency} filter="expense" onAdd={() => openEditor()} onEdit={openEditor} onDelete={removeTransaction} />;
+    if (view === 'categories') return <CategoriesPanel categories={snapshot.categories} />;
+    if (view === 'budgets' || view === 'goals') return <BudgetPanel categories={snapshot.categories} budgets={snapshot.budgets} preferences={snapshot.preferences} onSave={saveBudgetForCategory} />;
+    if (view === 'settings' || view === 'reports') return <SettingsPanel connection={connection} preferences={snapshot.preferences} syncedAt={snapshot.syncedAt} onSync={() => refreshSnapshot(true)} onSavePreferences={saveSheetPreferences} onReconnect={reconnect} onDisconnect={disconnect} onSignOut={signOutUser} onDeleteAll={removeAll} />;
+    if (view === 'insights' && currentInsights) return <section className="workspace-panel insights-workspace"><div className="workspace-panel-heading"><div><span className="panel-kicker">Métricas agregadas</span><h2>Insights</h2><p>{currentInsights.summary}</p></div><button type="button" className="toolbar-button" onClick={() => void getInsights().then(setInsights).catch((caught) => showToast(errorMessage(caught)))}><RefreshCw size={15} />Actualizar</button></div><InsightsCard data={currentInsights} showAll onShowAll={() => undefined} /><div className="recommendation-list">{currentInsights.recommendations.map((recommendation) => <p key={recommendation}><Check size={14} />{recommendation}</p>)}</div></section>;
+    return <DashboardOverview snapshot={snapshot} insights={currentInsights!} onAdd={() => openEditor()} onShowIssues={() => selectView('settings')} />;
+  };
+
+  return <div className="cuantly-app"><aside className="sidebar"><div className="brand sidebar-brand"><CuantlyMark /><div><strong>Cuantly</strong><small>Controla. Analiza. Decide.</small></div></div><nav className="side-nav" aria-label="Navegación principal">{navItems.map(({ id, label, icon: Icon }) => <button key={id} type="button" className={view === id || (id === 'goals' && view === 'budgets') ? 'is-active' : ''} onClick={() => selectView(id)}><Icon size={17} /><span>{label}</span></button>)}</nav><div className="sidebar-spacer" /><div className="support-card"><div className="support-illustration" aria-hidden="true"><div className="support-bot"><span /><span /><i /></div><Sparkles size={18} /></div><strong>Archivo conectado</strong><p>Tu información se sincroniza desde Google Sheets.</p><button type="button" onClick={() => openEditor()}><Plus size={14} />Nuevo movimiento</button></div><button type="button" className="collapse-button" onClick={() => selectView('settings')}><Settings size={16} />Configuración</button></aside><div className="app-shell"><div className="dashboard-column"><header className="desktop-topbar"><div className="desktop-greeting"><h1>¡Hola, {greeting}! <span>👋</span></h1><p>Así van tus finanzas registradas en tu archivo.</p></div><div className="topbar-controls"><span className="sync-indicator">{syncing ? <LoaderCircle className="spin" size={13} /> : <CheckCircle2 size={13} />} {syncing ? 'Sincronizando' : 'Sheets conectado'}</span><button type="button" className="toolbar-button compact" onClick={() => void refreshSnapshot(true)} disabled={syncing}><RefreshCw size={15} />Sincronizar</button><button className="user-button" type="button" onClick={() => selectView('settings')}><span className="avatar">{initials(user)}</span><span>{greeting}</span><ChevronDown size={14} /></button><button type="button" className="icon-button" onClick={() => void signOutUser()} aria-label="Cerrar sesión"><LogOut size={17} /></button></div></header><header className="mobile-topbar"><button type="button" className="mobile-menu-button" onClick={() => setMobileMenuOpen(true)} aria-label="Abrir menú"><Menu size={20} /></button><div className="brand mobile-brand"><CuantlyMark size={23} /><strong>Cuantly</strong></div><div className="mobile-top-actions"><button type="button" className="icon-button" onClick={() => void refreshSnapshot(true)} aria-label="Sincronizar"><RefreshCw size={17} /></button><span className="avatar">{initials(user)}</span></div></header>{isMobileMenuOpen && <div className="mobile-menu-scrim" onClick={() => setMobileMenuOpen(false)} />}<aside className={`mobile-drawer ${isMobileMenuOpen ? 'is-open' : ''}`} aria-label="Menú móvil"><div className="drawer-heading"><div className="brand"><CuantlyMark /><strong>Cuantly</strong></div><button type="button" onClick={() => setMobileMenuOpen(false)} aria-label="Cerrar menú"><X size={19} /></button></div>{navItems.map(({ id, label, icon: Icon }) => <button type="button" key={id} className={view === id ? 'is-active' : ''} onClick={() => selectView(id)}><Icon size={17} /><span>{label}</span></button>)}</aside><main className="dashboard-main"><div className="mobile-greeting"><h1>¡Hola, {greeting}! <span>👋</span></h1><p>Datos sincronizados desde Google Sheets.</p></div>{error && <p className="global-error" role="alert">{error}</p>}{renderView()}</main><nav className="mobile-bottom-nav" aria-label="Navegación móvil"><button type="button" className={view === 'dashboard' ? 'is-active' : ''} onClick={() => selectView('dashboard')}><House size={17} /><span>Dashboard</span></button><button type="button" className={view === 'transactions' ? 'is-active' : ''} onClick={() => selectView('transactions')}><ReceiptText size={17} /><span>Movimientos</span></button><button type="button" className="mobile-add" onClick={() => openEditor()} aria-label="Nuevo movimiento"><Plus size={25} /></button><button type="button" className={view === 'insights' ? 'is-active' : ''} onClick={() => selectView('insights')}><Lightbulb size={17} /><span>Insights</span></button><button type="button" className={view === 'settings' ? 'is-active' : ''} onClick={() => selectView('settings')}><MoreHorizontal size={18} /><span>Más</span></button></nav></div></div>{isEditorOpen && <TransactionEditor key={editing?.id ?? 'new'} transaction={editing} categories={snapshot.categories} onClose={closeEditor} onSave={saveTransaction} />}{toast && <div className="toast" role="status"><Check size={15} />{toast}</div>}</div>;
+}

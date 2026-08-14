@@ -1,0 +1,20 @@
+{
+  "firestore": {
+    "database": "(default)",
+    "rules": "firestore.rules"
+  },
+  "auth": {
+    "providers": {
+      "anonymous": false,
+      "emailPassword": false,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Billqo",
+        "supportEmail": "cuantly@gmail.com",
+        "authorizedRedirectUris": [
+          "https://billqo.firebaseapp.com/__/auth/handler",
+          "https://billqo.vercel.app/__/auth/handler"
+        ]
+      }
+    }
+  }
+}

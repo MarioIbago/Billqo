@@ -1,0 +1,11 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Financial data is not stored in Firestore. The server uses Firebase Admin
+    // only for technical OAuth, idempotency and security metadata, so client
+    // requests must remain closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

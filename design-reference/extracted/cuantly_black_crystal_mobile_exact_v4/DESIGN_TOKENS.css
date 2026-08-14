@@ -1,0 +1,72 @@
+:root {
+  --bg: #000000;
+  --bg-elevated: #050607;
+  --text-primary: #F6F7F8;
+  --text-secondary: #969CA4;
+  --text-tertiary: #696F78;
+  --accent: #F2F3F4;
+  --income: #42D77D;
+  --expense: #FF5A60;
+  --balance: #4E9FFF;
+  --warning: #F4A43C;
+  --glass-fill-1: rgba(255,255,255,.035);
+  --glass-fill-2: rgba(255,255,255,.055);
+  --glass-fill-3: rgba(255,255,255,.075);
+  --glass-border: rgba(255,255,255,.13);
+  --glass-border-strong: rgba(255,255,255,.20);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --radius-sm: 14px;
+  --radius-md: 18px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-sheet: 28px;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, Inter, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.glass-l2 {
+  position: relative;
+  background: linear-gradient(145deg, rgba(255,255,255,.075), rgba(255,255,255,.032) 52%, rgba(255,255,255,.018));
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(22px) saturate(118%);
+  -webkit-backdrop-filter: blur(22px) saturate(118%);
+  box-shadow: 0 18px 48px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.095), inset 0 -1px 0 rgba(255,255,255,.018);
+}
+
+.glass-l2::before {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.34), transparent);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-l1, .glass-l2, .glass-l3 {
+    background: rgba(18,19,21,.96);
+  }
+}
