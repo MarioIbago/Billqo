@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import type { ReceiptScanResult, TransactionType } from '../src/types';
-import { errors } from './errors';
+import { AppError, errors } from './errors';
 
-const DEFAULT_PRIMARY_MODEL = 'google/gemma-3-4b-it:free';
+const DEFAULT_PRIMARY_MODEL = 'openrouter/free';
 const DEFAULT_PAID_MODEL = 'google/gemma-3-4b-it';
 const DEFAULT_FALLBACK_MODEL = 'google/gemini-2.5-flash-lite';
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
@@ -79,6 +79,17 @@ const RECEIPT_JSON_SCHEMA = {
   ],
 } as const;
 
+class OpenRouterAttemptError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly providerCode: string,
+    public readonly route: string,
+  ) {
+    super(`OpenRouter attempt failed (${status || 'network'})`);
+    this.name = 'OpenRouterAttemptError';
+  }
+}
+
 function configuredModels(): { primary: string; paid: string; fallback: string } {
   const primary = process.env.OPENROUTER_RECEIPT_MODEL?.trim() || DEFAULT_PRIMARY_MODEL;
   const paid = process.env.OPENROUTER_RECEIPT_PAID_MODEL?.trim() || DEFAULT_PAID_MODEL;
@@ -141,11 +152,11 @@ export function parseReceiptModelResult(raw: string, allowedCategories: string[]
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw errors.internal('No pudimos validar la lectura del comprobante. Inténtalo de nuevo.');
+    throw errors.ai('La IA no devolvió una lectura válida del comprobante. Inténtalo de nuevo.');
   }
 
   const result = receiptResultSchema.safeParse(parsed);
-  if (!result.success) throw errors.internal('No pudimos validar la lectura del comprobante. Inténtalo de nuevo.');
+  if (!result.success) throw errors.ai('La IA no devolvió una lectura válida del comprobante. Inténtalo de nuevo.');
 
   const value = result.data;
   const warnings = [...value.warnings];
@@ -190,12 +201,54 @@ interface OpenRouterResponse {
   choices?: Array<{ message?: { content?: string | null } }>;
 }
 
+interface OpenRouterErrorResponse {
+  error?: { code?: string | number };
+}
+
+interface OpenRouterRouting {
+  model?: string;
+  models?: string[];
+  label: string;
+}
+
+function safeProviderCode(payload: unknown): string {
+  if (!payload || typeof payload !== 'object') return 'unknown';
+  const code = (payload as OpenRouterErrorResponse).error?.code;
+  if (typeof code === 'string' || typeof code === 'number') return String(code).slice(0, 80);
+  return 'unknown';
+}
+
+function isCredentialOrBillingFailure(error: unknown): boolean {
+  return error instanceof OpenRouterAttemptError && [401, 402, 403].includes(error.status);
+}
+
+function mapOpenRouterFailure(error: unknown): AppError {
+  if (error instanceof AppError) return error;
+  if (!(error instanceof OpenRouterAttemptError)) {
+    return errors.ai('No pudimos analizar el comprobante en este momento. Inténtalo de nuevo.');
+  }
+
+  if (error.status === 401 || error.status === 403) {
+    return errors.configuration('La conexión de Billqo con OpenRouter necesita atención.');
+  }
+  if (error.status === 402) {
+    return errors.configuration('La cuenta de OpenRouter necesita saldo o habilitación para procesar comprobantes.');
+  }
+  if (error.status === 429) {
+    return errors.rateLimited('El escáner está recibiendo demasiadas solicitudes. Inténtalo de nuevo en un momento.');
+  }
+  if ([400, 404, 422].includes(error.status)) {
+    return errors.configuration('No hay un modelo de visión compatible disponible con la configuración actual del escáner.');
+  }
+  return errors.ai('El servicio de análisis de comprobantes no está disponible en este momento. Inténtalo de nuevo.');
+}
+
 async function requestOpenRouter(
   image: Buffer,
   mimeType: string,
   allowedCategories: string[],
   preferredType: TransactionType | undefined,
-  models: string[],
+  routing: OpenRouterRouting,
 ): Promise<{ content: string; model?: string }> {
   const apiKey = process.env.OPENROUTER_API_KEY?.trim();
   if (!apiKey) throw errors.configuration('El escáner de comprobantes todavía no está configurado.');
@@ -219,7 +272,8 @@ async function requestOpenRouter(
       headers,
       signal: AbortSignal.timeout(35_000),
       body: JSON.stringify({
-        models,
+        ...(routing.model ? { model: routing.model } : {}),
+        ...(routing.models && routing.models.length > 0 ? { models: routing.models } : {}),
         messages: [
           { role: 'system', content: RECEIPT_SYSTEM_PROMPT },
           {
@@ -246,32 +300,47 @@ async function requestOpenRouter(
           data_collection: 'deny',
         },
         temperature: 0,
-        max_tokens: 480,
+        max_tokens: 700,
         stream: false,
       }),
     });
-  } catch {
-    throw errors.internal('No pudimos analizar el comprobante en este momento. Inténtalo de nuevo.');
+  } catch (error) {
+    console.error('OpenRouter receipt request failed', {
+      status: 0,
+      code: error instanceof Error ? error.name : 'network_error',
+      route: routing.label,
+    });
+    throw new OpenRouterAttemptError(0, error instanceof Error ? error.name : 'network_error', routing.label);
   }
 
   if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
-      throw errors.configuration('El escáner de comprobantes no está disponible por una configuración del servicio.');
+    let providerPayload: unknown;
+    try {
+      providerPayload = await response.json();
+    } catch {
+      providerPayload = undefined;
     }
-    if (response.status === 429) throw errors.rateLimited('El escáner está recibiendo demasiadas solicitudes. Inténtalo de nuevo en un momento.');
-    throw errors.internal('No pudimos analizar el comprobante en este momento. Inténtalo de nuevo.');
+    const providerCode = safeProviderCode(providerPayload);
+    console.error('OpenRouter receipt request failed', {
+      status: response.status,
+      code: providerCode,
+      route: routing.label,
+    });
+    throw new OpenRouterAttemptError(response.status, providerCode, routing.label);
   }
 
   let payload: OpenRouterResponse;
   try {
     payload = await response.json() as OpenRouterResponse;
   } catch {
-    throw errors.internal('No pudimos validar la lectura del comprobante. Inténtalo de nuevo.');
+    console.error('OpenRouter receipt response invalid', { route: routing.label, code: 'invalid_json_response' });
+    throw new OpenRouterAttemptError(502, 'invalid_json_response', routing.label);
   }
 
   const content = payload.choices?.[0]?.message?.content;
   if (typeof content !== 'string' || !content.trim()) {
-    throw errors.internal('No pudimos validar la lectura del comprobante. Inténtalo de nuevo.');
+    console.error('OpenRouter receipt response invalid', { route: routing.label, code: 'empty_content', model: payload.model ?? 'unknown' });
+    throw new OpenRouterAttemptError(502, 'empty_content', routing.label);
   }
   return { content, model: payload.model };
 }
@@ -283,14 +352,43 @@ export async function scanReceiptImage(input: {
   preferredType?: TransactionType;
 }): Promise<ReceiptScanResult> {
   const { primary, paid, fallback } = configuredModels();
-  const modelOrder = [...new Set([primary, paid, fallback])];
-  const first = await requestOpenRouter(input.image, input.mimeType, input.allowedCategories, input.preferredType, modelOrder);
+  const fallbackModels = [...new Set([paid, fallback].filter((model) => model && model !== primary))];
+
+  let firstFailure: unknown;
+  try {
+    const first = await requestOpenRouter(
+      input.image,
+      input.mimeType,
+      input.allowedCategories,
+      input.preferredType,
+      { model: primary, label: 'primary' },
+    );
+    try {
+      return parseReceiptModelResult(first.content, input.allowedCategories);
+    } catch (error) {
+      firstFailure = error;
+      console.warn('Receipt model output rejected', {
+        model: first.model ?? primary,
+        code: error instanceof AppError ? error.code : 'invalid_output',
+      });
+    }
+  } catch (error) {
+    firstFailure = error;
+    if (isCredentialOrBillingFailure(error)) throw mapOpenRouterFailure(error);
+  }
+
+  if (fallbackModels.length === 0) throw mapOpenRouterFailure(firstFailure);
 
   try {
-    return parseReceiptModelResult(first.content, input.allowedCategories);
-  } catch (error) {
-    if (first.model === fallback || modelOrder.length === 1) throw error;
-    const second = await requestOpenRouter(input.image, input.mimeType, input.allowedCategories, input.preferredType, [fallback]);
+    const second = await requestOpenRouter(
+      input.image,
+      input.mimeType,
+      input.allowedCategories,
+      input.preferredType,
+      { models: fallbackModels, label: 'fallback' },
+    );
     return parseReceiptModelResult(second.content, input.allowedCategories);
+  } catch (error) {
+    throw mapOpenRouterFailure(error);
   }
 }
