@@ -2,7 +2,8 @@ import { z } from 'zod';
 import type { ReceiptScanResult, TransactionType } from '../src/types';
 import { errors } from './errors';
 
-const DEFAULT_PRIMARY_MODEL = 'google/gemma-3-4b-it';
+const DEFAULT_PRIMARY_MODEL = 'google/gemma-3-4b-it:free';
+const DEFAULT_PAID_MODEL = 'google/gemma-3-4b-it';
 const DEFAULT_FALLBACK_MODEL = 'google/gemini-2.5-flash-lite';
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 const MAX_RECEIPT_BYTES = 6 * 1024 * 1024;
@@ -78,10 +79,11 @@ const RECEIPT_JSON_SCHEMA = {
   ],
 } as const;
 
-function configuredModels(): { primary: string; fallback: string } {
+function configuredModels(): { primary: string; paid: string; fallback: string } {
   const primary = process.env.OPENROUTER_RECEIPT_MODEL?.trim() || DEFAULT_PRIMARY_MODEL;
+  const paid = process.env.OPENROUTER_RECEIPT_PAID_MODEL?.trim() || DEFAULT_PAID_MODEL;
   const fallback = process.env.OPENROUTER_RECEIPT_FALLBACK_MODEL?.trim() || DEFAULT_FALLBACK_MODEL;
-  return { primary, fallback };
+  return { primary, paid, fallback };
 }
 
 function normalizeCategory(value: string): string {
@@ -280,14 +282,14 @@ export async function scanReceiptImage(input: {
   allowedCategories: string[];
   preferredType?: TransactionType;
 }): Promise<ReceiptScanResult> {
-  const { primary, fallback } = configuredModels();
-  const modelOrder = primary === fallback ? [primary] : [primary, fallback];
+  const { primary, paid, fallback } = configuredModels();
+  const modelOrder = [...new Set([primary, paid, fallback])];
   const first = await requestOpenRouter(input.image, input.mimeType, input.allowedCategories, input.preferredType, modelOrder);
 
   try {
     return parseReceiptModelResult(first.content, input.allowedCategories);
   } catch (error) {
-    if (primary === fallback || first.model === fallback) throw error;
+    if (first.model === fallback || modelOrder.length === 1) throw error;
     const second = await requestOpenRouter(input.image, input.mimeType, input.allowedCategories, input.preferredType, [fallback]);
     return parseReceiptModelResult(second.content, input.allowedCategories);
   }
