@@ -2,7 +2,7 @@ import { mkdirSync, unlinkSync } from 'node:fs';
 import { build } from 'esbuild';
 
 mkdirSync('api', { recursive: true });
-for (const staleFile of ['api/index.js', 'api/[...path].js', 'api/[...path].cjs']) {
+for (const staleFile of ['api/[...path].js', 'api/index.cjs', 'api/[...path].cjs']) {
   try {
     unlinkSync(staleFile);
   } catch (error) {
@@ -18,7 +18,7 @@ await build({
   platform: 'node',
   target: 'node22',
   sourcemap: false,
-  outfile: 'api/index.cjs',
+  outfile: 'api/index.js',
   footer: {
     js: 'module.exports = module.exports.default || module.exports;',
   },
