@@ -219,17 +219,10 @@ export interface ApiError {
 }
 
 export interface UserProfile {
-  uid: string;
-  email?: string;
-  name?: string;
-  picture?: string;
-}
-
-export interface OperationRecord {
-  idempotencyKey: string;
-  uid: string;
-  transactionId: string;
-  status: 'pending' | 'completed' | 'failed';
-  createdAt: string;
-  updatedAt: string;
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  currency: string;
+  monthlyBudget: number;
 }
