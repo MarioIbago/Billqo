@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { static as serveStatic } from 'express';
 import { createServer as createViteServer } from 'vite';
-import app from './server/app';
+import app from './server/application';
 import { validateRuntimeConfiguration } from './server/config';
 
 // Vite also reads local dotenv files. Load the same configuration for the
