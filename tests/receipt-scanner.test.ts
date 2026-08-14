@@ -39,6 +39,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   delete process.env.OPENROUTER_API_KEY;
   delete process.env.OPENROUTER_RECEIPT_MODEL;
+  delete process.env.OPENROUTER_RECEIPT_PAID_MODEL;
   delete process.env.OPENROUTER_RECEIPT_FALLBACK_MODEL;
 });
 
@@ -65,10 +66,10 @@ describe('receipt scanner', () => {
     expect(RECEIPT_SYSTEM_PROMPT).not.toMatch(/por ejemplo|ejemplo|e\.g\./i);
   });
 
-  it('calls OpenRouter only from the backend and validates mocked structured JSON', async () => {
+  it('prefers the free OpenRouter vision model and validates mocked structured JSON', async () => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      model: 'google/gemma-3-4b-it',
+      model: 'google/gemma-3-4b-it:free',
       choices: [{ message: { content: JSON.stringify(validExpense()) } }],
     }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
     vi.stubGlobal('fetch', fetchMock);
@@ -88,16 +89,20 @@ describe('receipt scanner', () => {
     const headers = request.headers as Record<string, string>;
     expect(headers.Authorization).toBe('Bearer test-openrouter-key');
     const body = JSON.parse(String(request.body));
-    expect(body.models).toEqual(['google/gemma-3-4b-it', 'google/gemini-2.5-flash-lite']);
+    expect(body.models).toEqual([
+      'google/gemma-3-4b-it:free',
+      'google/gemma-3-4b-it',
+      'google/gemini-2.5-flash-lite',
+    ]);
     expect(body.provider).toEqual({ require_parameters: true, data_collection: 'deny' });
     expect(body.response_format.type).toBe('json_schema');
   });
 
-  it('uses Flash-Lite only if a successful cheap-model response cannot be validated', async () => {
+  it('uses Flash-Lite only if a successful cheaper-model response cannot be validated', async () => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({
-        model: 'google/gemma-3-4b-it',
+        model: 'google/gemma-3-4b-it:free',
         choices: [{ message: { content: '{bad-json' } }],
       }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
