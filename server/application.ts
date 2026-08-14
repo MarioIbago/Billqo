@@ -34,7 +34,12 @@ const receiptErrorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
 
   const status = error instanceof AppError ? error.status : 500;
   const body = toApiError(error);
-  if (status >= 500) console.error('Receipt scan request failed', error instanceof Error ? error.name : 'unknown_error');
+  if (status >= 500) {
+    console.error('Receipt scan request failed', {
+      status,
+      code: error instanceof AppError ? error.code : 'INTERNAL',
+    });
+  }
   res.status(status).json({ error: body });
 };
 
