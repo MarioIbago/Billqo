@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Calendar, Camera, ChevronDown, DollarSign, LoaderCircle, X } from 'lucide-react';
+import { Calendar, Camera, ChevronDown, DollarSign, FolderOpen, Images, LoaderCircle, Upload, X } from 'lucide-react';
 import type {
   Category,
   CostType,
@@ -22,6 +22,7 @@ interface AddTransactionModalProps {
 
 const paymentMethods: PaymentMethod[] = ['Efectivo', 'Tarjeta Débito', 'Tarjeta Crédito', 'Transferencia'];
 const expenseCostTypes: CostType[] = ['Fijo', 'Variable', 'Discrecional', 'Operativo', 'Hormiga'];
+const mobileImageFileTypes = '.jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif';
 
 const labelClass = 'mb-1.5 block text-[13px] font-semibold tracking-[0.01em] text-white/60';
 const controlClass = 'h-12 w-full min-w-0 max-w-full rounded-2xl border border-white/[0.11] bg-white/[0.035] px-3.5 text-[16px] text-white outline-none transition focus:border-white/25 focus:bg-white/[0.055] disabled:opacity-50';
@@ -49,9 +50,12 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
   const [notes, setNotes] = useState(transaction?.notes ?? '');
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [receiptSourcesOpen, setReceiptSourcesOpen] = useState(false);
   const [scanMessage, setScanMessage] = useState<string>();
   const [formError, setFormError] = useState<string>();
-  const receiptInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const photosInputRef = useRef<HTMLInputElement>(null);
+  const filesInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const previousBodyOverflow = document.body.style.overflow;
@@ -73,6 +77,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
     setCategoryId(nextCategory?.id ?? '');
     setCostType(nextType === 'income' ? 'Ingreso' : 'Variable');
     setScanMessage(undefined);
+    setReceiptSourcesOpen(false);
   };
 
   const applyReceiptResult = (result: ReceiptScanResult) => {
@@ -108,6 +113,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
   const handleReceiptFile = async (file: File) => {
     setFormError(undefined);
     setScanMessage(undefined);
+    setReceiptSourcesOpen(false);
     try {
       setScanning(true);
       const prepared = await prepareReceiptImage(file);
@@ -121,6 +127,12 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
     } finally {
       setScanning(false);
     }
+  };
+
+  const handleReceiptSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.currentTarget.value = '';
+    if (file) void handleReceiptFile(file);
   };
 
   const submit = async (event: React.FormEvent) => {
@@ -235,27 +247,55 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
 
               {!transaction && (
                 <>
-                  <input
-                    ref={receiptInputRef}
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    hidden
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      event.currentTarget.value = '';
-                      if (file) void handleReceiptFile(file);
-                    }}
-                  />
+                  <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" hidden onChange={handleReceiptSelection} />
+                  <input ref={photosInputRef} type="file" accept="image/*" hidden onChange={handleReceiptSelection} />
+                  <input ref={filesInputRef} type="file" accept={mobileImageFileTypes} hidden onChange={handleReceiptSelection} />
+
                   <button
                     type="button"
-                    className="flex h-12 min-w-0 items-center justify-center gap-2.5 rounded-2xl border border-white/[0.10] bg-white/[0.025] px-3 text-[15px] font-medium text-white/65 transition active:scale-[0.99] disabled:opacity-50"
+                    className="flex h-12 min-w-0 items-center justify-center gap-2.5 rounded-2xl border border-white/[0.13] bg-white/[0.055] px-3 text-[15px] font-semibold text-white/75 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-xl transition active:scale-[0.99] disabled:opacity-50"
                     disabled={scanning || saving}
-                    onClick={() => receiptInputRef.current?.click()}
+                    onClick={() => setReceiptSourcesOpen((open) => !open)}
+                    aria-expanded={receiptSourcesOpen}
                   >
-                    {scanning ? <LoaderCircle className="shrink-0 animate-spin" size={18} /> : <Camera className="shrink-0" size={18} />}
-                    <span className="truncate">{scanning ? 'Analizando comprobante…' : `Escanear comprobante de ${type === 'expense' ? 'gasto' : 'ingreso'}`}</span>
+                    {scanning ? <LoaderCircle className="shrink-0 animate-spin" size={18} /> : <Upload className="shrink-0" size={18} />}
+                    <span className="truncate">{scanning ? 'Analizando comprobante…' : 'Agregar comprobante'}</span>
+                    {!scanning && <ChevronDown className={`ml-auto shrink-0 transition-transform ${receiptSourcesOpen ? 'rotate-180' : ''}`} size={16} />}
                   </button>
+
+                  {receiptSourcesOpen && !scanning && (
+                    <div
+                      className="grid grid-cols-3 gap-2 rounded-[22px] border border-white/[0.14] bg-white/[0.065] p-2.5 shadow-[0_14px_40px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-2xl"
+                      role="group"
+                      aria-label="Origen del comprobante"
+                    >
+                      <button
+                        type="button"
+                        className="flex min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border border-white/[0.10] bg-white/[0.045] px-2 py-3 text-white/75 transition active:scale-95"
+                        onClick={() => cameraInputRef.current?.click()}
+                      >
+                        <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/[0.08]"><Camera size={19} /></span>
+                        <span className="text-[13px] font-semibold">Cámara</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="flex min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border border-white/[0.10] bg-white/[0.045] px-2 py-3 text-white/75 transition active:scale-95"
+                        onClick={() => photosInputRef.current?.click()}
+                      >
+                        <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/[0.08]"><Images size={19} /></span>
+                        <span className="text-[13px] font-semibold">Fotos</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="flex min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border border-white/[0.10] bg-white/[0.045] px-2 py-3 text-white/75 transition active:scale-95"
+                        onClick={() => filesInputRef.current?.click()}
+                      >
+                        <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/[0.08]"><FolderOpen size={19} /></span>
+                        <span className="text-[13px] font-semibold">Archivos</span>
+                      </button>
+                    </div>
+                  )}
+
                   {scanMessage && <p className="m-0 rounded-xl border border-white/[0.08] bg-white/[0.025] px-3 py-2 text-[12px] leading-5 text-white/55" role="status">{scanMessage}</p>}
                 </>
               )}
