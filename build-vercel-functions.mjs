@@ -9,7 +9,7 @@ for (const staleFile of ['api/index.js', 'api/[...path].js', 'api/index.cjs', 'a
 }
 await build({
   bundle: true,
-  entryPoints: ['server/app.ts'],
+  entryPoints: ['server/application.ts'],
   external: ['express', 'googleapis', 'google-auth-library', 'zod'],
   format: 'cjs',
   platform: 'node',
