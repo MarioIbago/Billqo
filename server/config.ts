@@ -24,7 +24,7 @@ export function getAppUrl(): string {
   try {
     parsed = new URL(configuredUrl);
   } catch {
-    throw errors.configuration('APP_URL debe ser una URL absoluta vÃ¡lida, por ejemplo https://billqo.vercel.app.');
+    throw errors.configuration('APP_URL debe ser una URL absoluta válida, por ejemplo https://billqo.vercel.app.');
   }
 
   if (parsed.pathname !== '/' || parsed.search || parsed.hash || parsed.username || parsed.password) {
@@ -49,14 +49,24 @@ export function getGoogleOAuthConfig() {
 }
 
 /**
- * Fails fast at runtime when the server cannot securely authenticate Firebase
- * users or perform the server-side Google OAuth code flow. Secrets are never
- * returned or written to logs by this validation.
+ * Validate secure runtime configuration before serving a traditional Node
+ * server. On Vercel, however, this module is imported during a Function cold
+ * start. Throwing from module initialization makes every route crash with
+ * FUNCTION_INVOCATION_FAILED and hides the actionable configuration error.
+ * Vercel routes therefore validate lazily when they actually need each secret.
  */
 export function validateRuntimeConfiguration(): void {
-  getGoogleOAuthConfig();
-  getFirebaseAdminConfig();
-  getEncryptionConfig();
+  try {
+    getGoogleOAuthConfig();
+    getFirebaseAdminConfig();
+    getEncryptionConfig();
+  } catch (error) {
+    if (process.env.VERCEL === '1') {
+      console.warn('Billqo runtime configuration is incomplete; affected routes will return a structured configuration error.');
+      return;
+    }
+    throw error;
+  }
 }
 
 export function getFirebaseAdminConfig() {
