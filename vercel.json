@@ -6,6 +6,9 @@
   "functions": {
     "api/index.ts": {
       "maxDuration": 60
+    },
+    "api/health.ts": {
+      "maxDuration": 10
     }
   },
   "routes": [
@@ -22,6 +25,7 @@
       },
       "continue": true
     },
+    { "src": "/api/health", "dest": "/api/health.ts" },
     { "src": "/api(?:/.*)?", "dest": "/api/index.ts" },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
