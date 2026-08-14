@@ -66,7 +66,7 @@ describe('receipt scanner', () => {
     expect(RECEIPT_SYSTEM_PROMPT).not.toMatch(/por ejemplo|ejemplo|e\.g\./i);
   });
 
-  it('prefers the free OpenRouter vision model and validates mocked structured JSON', async () => {
+  it('uses the OpenRouter free router first and validates mocked structured JSON', async () => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       model: 'google/gemma-3-4b-it:free',
@@ -89,20 +89,17 @@ describe('receipt scanner', () => {
     const headers = request.headers as Record<string, string>;
     expect(headers.Authorization).toBe('Bearer test-openrouter-key');
     const body = JSON.parse(String(request.body));
-    expect(body.models).toEqual([
-      'google/gemma-3-4b-it:free',
-      'google/gemma-3-4b-it',
-      'google/gemini-2.5-flash-lite',
-    ]);
+    expect(body.model).toBe('openrouter/free');
+    expect(body.models).toBeUndefined();
     expect(body.provider).toEqual({ require_parameters: true, data_collection: 'deny' });
     expect(body.response_format.type).toBe('json_schema');
   });
 
-  it('uses Flash-Lite only if a successful cheaper-model response cannot be validated', async () => {
+  it('uses paid cheap models only if the free response cannot be validated', async () => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({
-        model: 'google/gemma-3-4b-it:free',
+        model: 'some/free-model',
         choices: [{ message: { content: '{bad-json' } }],
       }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
@@ -120,6 +117,45 @@ describe('receipt scanner', () => {
     expect(result.amount).toBe(125.5);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const secondBody = JSON.parse(String((fetchMock.mock.calls[1][1] as RequestInit).body));
-    expect(secondBody.models).toEqual(['google/gemini-2.5-flash-lite']);
+    expect(secondBody.models).toEqual([
+      'google/gemma-3-4b-it',
+      'google/gemini-2.5-flash-lite',
+    ]);
+  });
+
+  it('falls back when the free router has no compatible endpoint', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: 404 } }), { status: 404 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        model: 'google/gemma-3-4b-it',
+        choices: [{ message: { content: JSON.stringify(validExpense()) } }],
+      }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await scanReceiptImage({
+      image: jpegBuffer(),
+      mimeType: 'image/jpeg',
+      allowedCategories: ['Comida'],
+    });
+
+    expect(result.category).toBe('Comida');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns a configuration error for OpenRouter credential or billing failures without retrying', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: { code: 402 } }), { status: 402 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(scanReceiptImage({
+      image: jpegBuffer(),
+      mimeType: 'image/jpeg',
+      allowedCategories: ['Comida'],
+    })).rejects.toMatchObject({ status: 503, code: 'CONFIGURATION_ERROR' });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
