@@ -1,4 +1,5 @@
 import { mkdirSync, unlinkSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { build } from 'esbuild';
 
 mkdirSync('api', { recursive: true });
@@ -23,3 +24,10 @@ await build({
     js: 'module.exports = module.exports.default || module.exports;',
   },
 });
+
+const require = createRequire(import.meta.url);
+const handler = require('./api/index.js');
+if (typeof handler !== 'function') {
+  throw new Error('Vercel API bundle did not export an Express-compatible function.');
+}
+console.log('Verified Vercel API bundle can be loaded by Node CommonJS.');
