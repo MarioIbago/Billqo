@@ -71,6 +71,23 @@ export interface FinancialTransaction {
   deletedAt?: string;
 }
 
+export interface ReceiptScanResult {
+  type: TransactionType;
+  merchant: string | null;
+  description: string | null;
+  amount: number | null;
+  currency: string | null;
+  date: string | null;
+  paymentMethod: PaymentMethod | null;
+  category: string | null;
+  costType: CostType | null;
+  fixedVariable: FixedVariable | null;
+  necessity: Necessity | null;
+  influence: 1 | 2 | 3 | 4 | 5 | null;
+  confidence: number;
+  warnings: string[];
+}
+
 // Preserves the existing component-facing name while adding the new data model.
 export type Transaction = FinancialTransaction;
 
