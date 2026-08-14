@@ -212,16 +212,24 @@ export interface ApiError {
     | 'RATE_LIMITED'
     | 'CONFIGURATION_ERROR'
     | 'GOOGLE_ERROR'
+    | 'AI_PROVIDER_ERROR'
     | 'INTERNAL';
   message: string;
   recoverable?: boolean;
 }
 
 export interface UserProfile {
-  id: string;
-  name: string;
-  email: string;
-  avatar: string;
-  currency: string;
-  monthlyBudget: number;
+  uid: string;
+  email?: string;
+  name?: string;
+  picture?: string;
+}
+
+export interface OperationRecord {
+  idempotencyKey: string;
+  uid: string;
+  transactionId: string;
+  status: 'pending' | 'completed' | 'failed';
+  createdAt: string;
+  updatedAt: string;
 }
