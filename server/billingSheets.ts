@@ -51,12 +51,26 @@ function clean(value: Cell): string {
 
 function number(value: Cell): number | undefined {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
-  const parsed = Number(clean(value).replace(/[$,\s]/g, ''));
+  const raw = clean(value).replace(/[$,\s]/g, '');
+  if (!raw) return undefined;
+  const parsed = Number(raw);
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function a1(sheet: string, range: string): string {
   return `'${sheet.replace(/'/g, "''")}'!${range}`;
+}
+
+export function columnLabel(columnNumber: number): string {
+  if (!Number.isInteger(columnNumber) || columnNumber < 1) throw new Error('Column number must be a positive integer.');
+  let value = columnNumber;
+  let label = '';
+  while (value > 0) {
+    const remainder = (value - 1) % 26;
+    label = String.fromCharCode(65 + remainder) + label;
+    value = Math.floor((value - 1) / 26);
+  }
+  return label;
 }
 
 function getSheets(client: GoogleOAuthClient) {
@@ -80,7 +94,7 @@ function sameHeader(values: Row[], expected: readonly string[]): boolean {
 
 async function ensureHeader(client: GoogleOAuthClient, spreadsheetId: string, title: string, headers: readonly string[]): Promise<void> {
   const sheets = getSheets(client);
-  const last = String.fromCharCode(64 + Math.min(headers.length, 26));
+  const last = columnLabel(headers.length);
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
     range: a1(title, `A1:${last}2`),
@@ -118,9 +132,10 @@ async function ensureBillingStructure(client: GoogleOAuthClient, spreadsheetId: 
 
   const refreshed = await sheets.spreadsheets.get({ spreadsheetId, fields: 'sheets.properties(sheetId,title)' });
   const formatRequests: Array<Record<string, unknown>> = [];
+  const managedTitles = new Set<string>(Object.values(SHEETS));
   for (const sheet of refreshed.data.sheets ?? []) {
     const properties = sheet.properties;
-    if (properties?.sheetId === undefined || !Object.values(SHEETS).includes(properties.title as typeof SHEETS[keyof typeof SHEETS])) continue;
+    if (properties?.sheetId === undefined || !managedTitles.has(properties.title ?? '')) continue;
     formatRequests.push(
       {
         updateSheetProperties: {
@@ -280,7 +295,7 @@ export async function loadBillingSnapshot(uid: string): Promise<BillingSnapshot>
   const fiscalRows = (response.data.valueRanges?.[1]?.values ?? []) as Row[];
   const cfdiRows = (response.data.valueRanges?.[2]?.values ?? []) as Row[];
   const tickets = ticketRows.slice(1).map(ticketFromRow).filter((value): value is BillingTicket => Boolean(value)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const fiscalProfile = fiscalRows.slice(1).map(fiscalFromRow).find(Boolean);
+  const fiscalProfile = fiscalRows.slice(1).map(fiscalFromRow).find((value): value is FiscalProfile => Boolean(value));
   const cfdis = cfdiRows.slice(1).map(cfdiFromRow).filter((value): value is CfdiRecord => Boolean(value)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   return { tickets, fiscalProfile, cfdis, syncedAt: nowIso() };
 }
@@ -341,7 +356,12 @@ export async function updateBillingTicketStatus(uid: string, id: string, status:
   const { client, spreadsheetId } = await storage(uid);
   await ensureBillingStructure(client, spreadsheetId);
   const found = await findTicketRow(client, spreadsheetId, id);
-  const ticket: BillingTicket = { ...found.ticket, status, cfdiUuid: cfdiUuid?.toUpperCase() || (status === 'invoiced' ? found.ticket.cfdiUuid : undefined), updatedAt: nowIso() };
+  const ticket: BillingTicket = {
+    ...found.ticket,
+    status,
+    cfdiUuid: cfdiUuid?.toUpperCase() || (status === 'invoiced' ? found.ticket.cfdiUuid : undefined),
+    updatedAt: nowIso(),
+  };
   await getSheets(client).spreadsheets.values.update({
     spreadsheetId,
     range: a1(SHEETS.tickets, `A${found.rowNumber}:U${found.rowNumber}`),
