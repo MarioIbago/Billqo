@@ -62,6 +62,7 @@ interface CrystalWorkspaceProps {
 }
 
 type Period = 'week' | 'month' | '30d' | 'all';
+type MovementPeriodFilter = 'all' | 'today' | 'week' | 'month';
 
 const accentColors = ['#72d694', '#55a8ff', '#ff656d', '#f2a04a', '#9a83ff', '#b3b7bf'];
 
@@ -83,6 +84,26 @@ function displayDate(value: string, timezone: string): string {
   const date = new Date(`${value}T12:00:00`);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat('es-MX', { timeZone: timezone || 'America/Mexico_City', day: '2-digit', month: 'short', year: 'numeric' }).format(date);
+}
+
+function normalizeSearchText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('es-MX')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function longDisplayDate(value: string, timezone: string): string {
+  const date = new Date(`${value}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('es-MX', {
+    timeZone: timezone || 'America/Mexico_City',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(date);
 }
 
 function greeting(): string {
@@ -253,6 +274,9 @@ export function CrystalWorkspace({ snapshot, connection, user, activeView, onVie
   const [search, setSearch] = useState('');
   const [movementType, setMovementType] = useState<'all' | TransactionType>('all');
   const [movementCategory, setMovementCategory] = useState('all');
+  const [movementPeriod, setMovementPeriod] = useState<MovementPeriodFilter>('all');
+  const [necessaryOnly, setNecessaryOnly] = useState(false);
+  const [highInfluenceOnly, setHighInfluenceOnly] = useState(false);
   const [budgetDrafts, setBudgetDrafts] = useState<Record<string, string>>({});
   const [preferenceDraft, setPreferenceDraft] = useState(snapshot.preferences);
   const [exportFormat, setExportFormat] = useState<'csv' | 'json'>('csv');
@@ -282,16 +306,74 @@ export function CrystalWorkspace({ snapshot, connection, user, activeView, onVie
 
   const analytics = useMemo(() => calculateAnalytics(periodTransactions, snapshot.budgets, { timezone: snapshot.preferences.timezone }), [periodTransactions, snapshot.budgets, snapshot.preferences.timezone]);
   const slices = analytics.expensesByCategory.map((slice, index) => ({ ...slice, color: accentColors[index % accentColors.length]! }));
-  const periodLabel = period === 'week' ? 'esta semana' : period === 'month' ? 'este mes' : period === '30d' ? 'los \u00FAltimos 30 d\u00EDas' : 'todo el historial';
+  const periodLabel = period === 'week' ? 'esta semana' : period === 'month' ? 'este mes' : period === '30d' ? 'los últimos 30 días' : 'todo el historial';
+
+  const movementWeekStart = useMemo(() => {
+    const currentDate = new Date(`${today}T12:00:00.000Z`);
+    const dayOfWeek = currentDate.getUTCDay() || 7;
+    currentDate.setUTCDate(currentDate.getUTCDate() - dayOfWeek + 1);
+    return currentDate.toISOString().slice(0, 10);
+  }, [today]);
+  const movementMonthStart = `${today.slice(0, 7)}-01`;
+
   const filteredMovements = useMemo(() => snapshot.transactions.filter((transaction) => {
-    const normalizedSearch = search.trim().toLowerCase();
-    const matchesSearch = !normalizedSearch || [transaction.description, transaction.category, transaction.notes ?? ''].some((value) => value.toLowerCase().includes(normalizedSearch));
+    const normalizedSearch = normalizeSearchText(search);
+    const searchHaystack = normalizeSearchText([
+      transaction.description,
+      transaction.category,
+      transaction.notes ?? '',
+      transaction.paymentMethod,
+      transaction.type === 'income' ? 'ingreso ingresos income' : 'gasto gastos expense',
+      transaction.necessity ?? '',
+      transaction.fixedVariable ?? '',
+      transaction.costType,
+      transaction.date,
+      displayDate(transaction.date, snapshot.preferences.timezone),
+      longDisplayDate(transaction.date, snapshot.preferences.timezone),
+      String(transaction.amount),
+      transaction.amount.toFixed(2),
+      formatMoney(transaction.amount, snapshot.preferences.currency),
+    ].join(' '));
+    const matchesSearch = !normalizedSearch || searchHaystack.includes(normalizedSearch);
     const matchesType = movementType === 'all' || transaction.type === movementType;
     const matchesCategory = movementCategory === 'all' || transaction.categoryId === movementCategory || transaction.category === movementCategory;
-    return matchesSearch && matchesType && matchesCategory;
-  }), [movementCategory, movementType, search, snapshot.transactions]);
+    const matchesPeriod = movementPeriod === 'all'
+      || (movementPeriod === 'today' && transaction.date === today)
+      || (movementPeriod === 'week' && transaction.date >= movementWeekStart && transaction.date <= today)
+      || (movementPeriod === 'month' && transaction.date >= movementMonthStart && transaction.date <= today);
+    const matchesNecessary = !necessaryOnly || transaction.necessity === 'Necesario';
+    const matchesHighInfluence = !highInfluenceOnly || (transaction.type === 'expense' && (transaction.influence ?? 0) >= 4);
+    return matchesSearch && matchesType && matchesCategory && matchesPeriod && matchesNecessary && matchesHighInfluence;
+  }), [
+    highInfluenceOnly,
+    movementCategory,
+    movementMonthStart,
+    movementPeriod,
+    movementType,
+    movementWeekStart,
+    necessaryOnly,
+    search,
+    snapshot.preferences.currency,
+    snapshot.preferences.timezone,
+    snapshot.transactions,
+    today,
+  ]);
   const expenseCategories = snapshot.categories.filter((category) => category.type === 'expense' && category.active);
   const budgetByCategory = new Map(snapshot.budgets.map((budget) => [budget.categoryId ?? budget.category, budget]));
+  const hasMovementFilters = Boolean(search.trim()) || movementType !== 'all' || movementCategory !== 'all' || movementPeriod !== 'all' || necessaryOnly || highInfluenceOnly;
+
+  const movementChipClass = (active: boolean) => `h-9 shrink-0 rounded-full border px-3 text-[12px] font-semibold transition active:scale-[0.98] ${active
+    ? 'border-white/[0.28] bg-white/[0.15] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.10)] backdrop-blur-2xl'
+    : 'border-white/[0.10] bg-white/[0.035] text-white/50 backdrop-blur-xl'}`;
+
+  const clearMovementFilters = () => {
+    setSearch('');
+    setMovementType('all');
+    setMovementCategory('all');
+    setMovementPeriod('all');
+    setNecessaryOnly(false);
+    setHighInfluenceOnly(false);
+  };
 
   const changeView = (view: CrystalView) => {
     setMoreOpen(false);
@@ -345,9 +427,26 @@ export function CrystalWorkspace({ snapshot, connection, user, activeView, onVie
 
   const renderMovements = () => (
     <section className="crystal-screen" aria-labelledby="movements-title">
-      <div className="crystal-screen-heading"><div><h1 id="movements-title">Movimientos</h1><p>Revisa, busca y edita cada registro guardado.</p></div><button type="button" className="crystal-button crystal-button-primary" onClick={onOpenAdd}><Plus size={15} />Nuevo movimiento</button></div>
-      <section className="crystal-panel crystal-filter-panel"><div className="crystal-search"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por descripción, categoría o nota" /></div><label className="crystal-select"><span className="sr-only">Tipo</span><select value={movementType} onChange={(event) => setMovementType(event.target.value as 'all' | TransactionType)}><option value="all">Todos los tipos</option><option value="expense">Gastos</option><option value="income">Ingresos</option></select><ChevronDown size={14} /></label><label className="crystal-select"><span className="sr-only">Categoría</span><select value={movementCategory} onChange={(event) => setMovementCategory(event.target.value)}><option value="all">Todas las categorías</option>{snapshot.categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select><ChevronDown size={14} /></label><span className="crystal-filter-count"><Filter size={14} />{filteredMovements.length} registro(s)</span></section>
-      <section className="crystal-panel crystal-list-panel">{filteredMovements.length === 0 ? <EmptyState title="No hay coincidencias" detail="Prueba con otros filtros o registra un nuevo movimiento." onAdd={onOpenAdd} /> : <div className="crystal-transaction-list">{filteredMovements.map((transaction) => <TransactionRow key={transaction.id} transaction={transaction} currency={snapshot.preferences.currency} timezone={snapshot.preferences.timezone} onEdit={() => onEditTransaction(transaction)} onDelete={() => onDeleteTransaction(transaction)} />)}</div>}</section>
+      <div className="crystal-screen-heading"><div><h1 id="movements-title">Movimientos</h1><p>Busca por comercio, monto, mes, categoría o método y combina filtros rápidos.</p></div><button type="button" className="crystal-button crystal-button-primary" onClick={onOpenAdd}><Plus size={15} />Nuevo movimiento</button></div>
+      <section className="crystal-panel crystal-filter-panel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 12 }}>
+        <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+          <div className="crystal-search min-w-[min(100%,280px)] flex-1"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Uber, $500, agosto, Comida…" inputMode="search" /></div>
+          <label className="crystal-select min-w-[180px] max-[560px]:min-w-0 max-[560px]:flex-1"><span className="sr-only">Categoría</span><select value={movementCategory} onChange={(event) => setMovementCategory(event.target.value)}><option value="all">Todas las categorías</option>{snapshot.categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select><ChevronDown size={14} /></label>
+          <span className="crystal-filter-count shrink-0"><Filter size={14} />{filteredMovements.length} registro(s)</span>
+        </div>
+        <div className="-mx-1 flex min-w-0 gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Filtros rápidos de movimientos">
+          <button type="button" className={movementChipClass(movementPeriod === 'today')} aria-pressed={movementPeriod === 'today'} onClick={() => setMovementPeriod((current) => current === 'today' ? 'all' : 'today')}>Hoy</button>
+          <button type="button" className={movementChipClass(movementPeriod === 'week')} aria-pressed={movementPeriod === 'week'} onClick={() => setMovementPeriod((current) => current === 'week' ? 'all' : 'week')}>Semana</button>
+          <button type="button" className={movementChipClass(movementPeriod === 'month')} aria-pressed={movementPeriod === 'month'} onClick={() => setMovementPeriod((current) => current === 'month' ? 'all' : 'month')}>Mes</button>
+          <span className="my-1 w-px shrink-0 bg-white/[0.08]" aria-hidden="true" />
+          <button type="button" className={movementChipClass(movementType === 'expense')} aria-pressed={movementType === 'expense'} onClick={() => setMovementType((current) => current === 'expense' ? 'all' : 'expense')}>Gastos</button>
+          <button type="button" className={movementChipClass(movementType === 'income')} aria-pressed={movementType === 'income'} onClick={() => setMovementType((current) => current === 'income' ? 'all' : 'income')}>Ingresos</button>
+          <button type="button" className={movementChipClass(necessaryOnly)} aria-pressed={necessaryOnly} onClick={() => setNecessaryOnly((current) => !current)}>Necesarios</button>
+          <button type="button" className={movementChipClass(highInfluenceOnly)} aria-pressed={highInfluenceOnly} onClick={() => setHighInfluenceOnly((current) => !current)}>Impulso alto</button>
+          {hasMovementFilters && <button type="button" className="h-9 shrink-0 rounded-full px-2.5 text-[11px] font-semibold text-white/35 transition hover:text-white/65" onClick={clearMovementFilters}><X size={13} className="inline-block" /> Limpiar</button>}
+        </div>
+      </section>
+      <section className="crystal-panel crystal-list-panel">{filteredMovements.length === 0 ? <EmptyState title="No hay coincidencias" detail="Prueba otra búsqueda o limpia los filtros." onAdd={onOpenAdd} /> : <div className="crystal-transaction-list">{filteredMovements.map((transaction) => <TransactionRow key={transaction.id} transaction={transaction} currency={snapshot.preferences.currency} timezone={snapshot.preferences.timezone} onEdit={() => onEditTransaction(transaction)} onDelete={() => onDeleteTransaction(transaction)} />)}</div>}</section>
       {snapshot.transactions.length > 0 && <button type="button" className="crystal-danger-link" onClick={onDeleteAllTransactions}><Trash2 size={14} />Archivar todos los movimientos</button>}
     </section>
   );
