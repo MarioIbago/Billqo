@@ -3,6 +3,14 @@ import React from 'react';
 const BILLQO_ASSET_BASE_URL =
   'https://raw.githubusercontent.com/MarioIbago/cuantly-svg-assets/main/billqo-assets';
 
+const BILLQO_WORDMARK_STYLE: React.CSSProperties = {
+  fontFamily:
+    '"SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif',
+  fontWeight: 400,
+  fontStyle: 'normal',
+  letterSpacing: '-0.01em',
+};
+
 export function CuantlyMark({ size = 28, className = '' }: { size?: number; className?: string }) {
   return (
     <img
@@ -24,7 +32,7 @@ export function CuantlyBrand({ compact = false, className = '' }: { compact?: bo
     <div className={`cuantly-brand ${compact ? 'is-compact' : ''} ${className}`.trim()}>
       <CuantlyMark size={compact ? 24 : 29} />
       <span>
-        <strong>Billqo</strong>
+        <strong style={BILLQO_WORDMARK_STYLE}>Billqo</strong>
         {!compact && <small>Controla. Analiza. Decide.</small>}
       </span>
     </div>
