@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
-import { FileSpreadsheet, LoaderCircle } from 'lucide-react';
+import { FileSpreadsheet, LoaderCircle, ReceiptText } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AddTransactionModal } from './components/AddTransactionModal';
+import { BillingWorkspace } from './components/BillingWorkspace';
 import { CrystalWorkspace, type CrystalView } from './components/CrystalWorkspace';
 import {
   createTransaction,
@@ -92,6 +93,7 @@ export function Dashboard() {
   const [activeView, setActiveView] = useState<CrystalView>('dashboard');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction>();
+  const [billingOpen, setBillingOpen] = useState(false);
 
   useEffect(() => onAuthStateChanged(auth, (nextUser) => {
     setUser(nextUser);
@@ -250,6 +252,9 @@ export function Dashboard() {
   if (!snapshot || connection.status !== 'connected') {
     return <StorageGateScreen connection={connection} message={error ?? oauthResultMessage} onConnect={() => void connectGoogle()} onRetry={() => void refresh()} />;
   }
+  if (billingOpen) {
+    return <BillingWorkspace onBack={() => setBillingOpen(false)} spreadsheetUrl={connection.spreadsheetUrl} />;
+  }
 
   return (
     <>
@@ -272,6 +277,14 @@ export function Dashboard() {
         onSignOut={() => void signOut(auth)}
         busy={loading}
       />
+      <button
+        type="button"
+        className="crystal-button crystal-button-primary fixed bottom-20 right-4 z-40 shadow-2xl md:bottom-6 md:right-6"
+        onClick={() => setBillingOpen(true)}
+        aria-label="Abrir facturación"
+      >
+        <ReceiptText size={15} />Facturación
+      </button>
       {isModalOpen && (
         <AddTransactionModal
           transaction={editingTransaction}
