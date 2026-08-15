@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Dashboard } from './Dashboard';
 import { AuthScreen } from './components/AuthScreen';
 import { LandingPage } from './components/LandingPage';
+import { MobileQaPage } from './components/MobileQaPage';
 import { PrivacyPage } from './components/PrivacyPage';
 import { TermsPage } from './components/TermsPage';
 import { usePersistentSession } from './lib/usePersistentSession';
@@ -22,6 +23,7 @@ export default function App() {
   return (
     <HashRouter>
       <Routes>
+        <Route path="/qa-mobile" element={<MobileQaPage />} />
         <Route path="/" element={user ? <Navigate to="/app" replace /> : <LandingPage />} />
         <Route
           path="/auth"
