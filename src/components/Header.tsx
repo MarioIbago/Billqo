@@ -36,6 +36,14 @@ const tabs: Array<{ id: AppTab; label: string; short: string; icon: React.Compon
   { id: 'budgets', label: 'Presupuestos', short: 'Presup.', icon: Layers },
 ];
 
+const BILLQO_WORDMARK_STYLE: React.CSSProperties = {
+  fontFamily:
+    '"SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif',
+  fontWeight: 400,
+  fontStyle: 'normal',
+  letterSpacing: '-0.01em',
+};
+
 export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
@@ -53,7 +61,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button type="button" className="crystal-header-brand" onClick={() => setActiveTab('dashboard')}>
             <span className="crystal-header-mark"><CuantlyMark size={21} /></span>
             <span>
-              <strong>Billqo</strong>
+              <strong style={BILLQO_WORDMARK_STYLE}>Billqo</strong>
               <small>Black Crystal</small>
             </span>
           </button>
