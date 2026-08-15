@@ -50,7 +50,7 @@ const ticketSchema = z.object({
   paymentMethod: z.string().trim().max(80).optional(),
   cardLast4: z.string().regex(/^\d{4}$/).optional(),
   identifiers: z.array(identifierSchema).max(20).default([]),
-  invoiceUrl: httpUrlSchema.max(500).optional(),
+  invoiceUrl: httpUrlSchema.optional(),
   qrData: z.string().trim().max(2_000).optional(),
   image: fileRefSchema.optional(),
   status: z.enum(['pending', 'invoiced', 'not_required']).default('pending'),
