@@ -34,6 +34,10 @@ interface AddTransactionModalProps {
 const paymentMethods: PaymentMethod[] = ['Efectivo', 'Tarjeta Débito', 'Tarjeta Crédito', 'Transferencia'];
 const expenseCostTypes: CostType[] = ['Fijo', 'Variable', 'Discrecional', 'Operativo', 'Hormiga'];
 const mobileImageFileTypes = '.jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif';
+const MAX_TEXT_LENGTH = 200;
+const MAX_AMOUNT = 999_999_999_999.99;
+const amountInputPattern = /^\d{0,12}(?:\.\d{0,2})?$/;
+const forbiddenControls = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 
 const labelClass = 'mb-1.5 block text-[12px] font-semibold tracking-[0.01em] text-white/55';
 const glassControl = 'border border-white/[0.13] bg-white/[0.065] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-2xl';
@@ -44,6 +48,20 @@ function normalizeCategory(value: string): string {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase('es-MX');
 }
 
+function safeSingleLine(value: string): string {
+  return value.replace(forbiddenControls, '').replace(/[\r\n]+/g, ' ').slice(0, MAX_TEXT_LENGTH);
+}
+
+function safeNotes(value: string): string {
+  return value.replace(forbiddenControls, '').slice(0, MAX_TEXT_LENGTH);
+}
+
+function normalizeAmountInput(value: string): string | undefined {
+  const normalized = value.replace(',', '.').trim();
+  if (normalized === '' || amountInputPattern.test(normalized)) return normalized;
+  return undefined;
+}
+
 export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClose, onSave, categories, transaction }) => {
   const [type, setType] = useState<TransactionType>(transaction?.type ?? 'expense');
   const filteredCategories = useMemo(
@@ -51,7 +69,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
     [categories, type],
   );
   const [categoryId, setCategoryId] = useState<string>(() => transaction?.categoryId ?? categories.find((category) => category.active && category.type === (transaction?.type ?? 'expense'))?.id ?? '');
-  const [description, setDescription] = useState(transaction?.description ?? '');
+  const [description, setDescription] = useState(safeSingleLine(transaction?.description ?? ''));
   const [amount, setAmount] = useState(transaction ? String(transaction.amount) : '');
   const [date, setDate] = useState(transaction?.date ?? new Date().toISOString().slice(0, 10));
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(transaction?.paymentMethod ?? 'Tarjeta Débito');
@@ -59,7 +77,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
   const [fixedVariable, setFixedVariable] = useState<FixedVariable>(transaction?.fixedVariable ?? 'Variable');
   const [necessity, setNecessity] = useState<Necessity>(transaction?.necessity ?? 'Necesario');
   const [influence, setInfluence] = useState<1 | 2 | 3 | 4 | 5>(transaction?.influence ?? 3);
-  const [notes, setNotes] = useState(transaction?.notes ?? '');
+  const [notes, setNotes] = useState(safeNotes(transaction?.notes ?? ''));
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [receiptSourcesOpen, setReceiptSourcesOpen] = useState(false);
@@ -101,9 +119,9 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
       : undefined;
     setCategoryId(category?.id ?? '');
 
-    if (result.amount !== null) setAmount(String(result.amount));
-    if (result.description) setDescription(result.description);
-    else if (result.merchant) setDescription(result.merchant);
+    if (result.amount !== null && result.amount <= MAX_AMOUNT) setAmount(String(result.amount));
+    if (result.description) setDescription(safeSingleLine(result.description));
+    else if (result.merchant) setDescription(safeSingleLine(result.merchant));
     if (result.date) setDate(result.date);
     if (result.paymentMethod) setPaymentMethod(result.paymentMethod);
 
@@ -153,12 +171,16 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
     setFormError(undefined);
     const numericAmount = Number(amount);
     const selectedCategory = filteredCategories.find((category) => category.id === categoryId);
-    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-      setFormError('Ingresa un monto mayor que cero.');
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0 || numericAmount > MAX_AMOUNT) {
+      setFormError('Ingresa un monto válido mayor que cero.');
       return;
     }
     if (!description.trim()) {
       setFormError('Agrega una descripción.');
+      return;
+    }
+    if (description.length > MAX_TEXT_LENGTH || notes.length > MAX_TEXT_LENGTH) {
+      setFormError('Descripción y notas admiten un máximo de 200 caracteres.');
       return;
     }
     if (!selectedCategory) {
@@ -246,7 +268,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
           </button>
         </header>
 
-        <form className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => void submit(event)}>
+        <form className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => void submit(event)} autoComplete="off">
           <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-3.5 pb-3 pt-3 sm:px-4">
             <div className="flex min-w-0 flex-col gap-3">
               <div className={`grid h-11 grid-cols-2 gap-1 rounded-[16px] p-1 ${glassControl}`}>
@@ -318,23 +340,38 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
                   <DollarSign className="mr-1.5 shrink-0 text-white/35" size={19} />
                   <input
                     className="h-full min-w-0 flex-1 bg-transparent text-[24px] font-medium tracking-[-0.02em] text-white outline-none placeholder:text-white/20"
+                    type="text"
                     inputMode="decimal"
+                    pattern="[0-9]*[.,]?[0-9]{0,2}"
+                    maxLength={15}
                     value={amount}
-                    onChange={(event) => setAmount(event.target.value)}
+                    onChange={(event) => {
+                      const next = normalizeAmountInput(event.target.value);
+                      if (next !== undefined) setAmount(next);
+                    }}
                     placeholder="0.00"
                     aria-label="Monto"
+                    autoComplete="off"
+                    enterKeyHint="next"
                   />
                 </div>
               </label>
 
               <label className="block min-w-0">
-                <span className={labelClass}>Descripción</span>
+                <span className="mb-1.5 flex items-center justify-between gap-2 text-[12px] font-semibold tracking-[0.01em] text-white/55">
+                  <span>Descripción</span>
+                  <span className="text-[10px] font-medium tabular-nums text-white/28">{description.length}/{MAX_TEXT_LENGTH}</span>
+                </span>
                 <input
                   className={controlClass}
+                  type="text"
                   value={description}
-                  onChange={(event) => setDescription(event.target.value)}
+                  onChange={(event) => setDescription(safeSingleLine(event.target.value))}
                   placeholder="Descripción del movimiento"
-                  maxLength={240}
+                  maxLength={MAX_TEXT_LENGTH}
+                  autoComplete="off"
+                  enterKeyHint="next"
+                  spellCheck
                 />
               </label>
 
@@ -358,6 +395,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
                       type="date"
                       value={date}
                       onChange={(event) => setDate(event.target.value)}
+                      autoComplete="off"
                     />
                   </div>
                 </label>
@@ -444,13 +482,18 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
                     )}
 
                     <label className="block min-w-0">
-                      <span className={labelClass}>Notas <em className="font-normal not-italic text-white/28">opcional</em></span>
+                      <span className="mb-1.5 flex items-center justify-between gap-2 text-[12px] font-semibold tracking-[0.01em] text-white/55">
+                        <span>Notas <em className="font-normal not-italic text-white/28">opcional</em></span>
+                        <span className="text-[10px] font-medium tabular-nums text-white/28">{notes.length}/{MAX_TEXT_LENGTH}</span>
+                      </span>
                       <textarea
                         className={`min-h-[66px] w-full min-w-0 max-w-full resize-none rounded-[15px] px-3 py-2.5 text-[16px] leading-5 text-white outline-none transition focus:border-white/25 focus:bg-white/[0.095] ${glassControl}`}
                         value={notes}
-                        onChange={(event) => setNotes(event.target.value)}
+                        onChange={(event) => setNotes(safeNotes(event.target.value))}
                         rows={2}
-                        maxLength={2000}
+                        maxLength={MAX_TEXT_LENGTH}
+                        autoComplete="off"
+                        spellCheck
                       />
                     </label>
                   </div>
