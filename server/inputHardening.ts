@@ -7,6 +7,8 @@ export const MAX_TRANSACTION_AMOUNT = 999_999_999_999.99;
 const forbiddenControlCharacters = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
 const singleLineBreaks = /[\r\n]/;
 const forbiddenObjectKeys = new Set(['__proto__', 'constructor', 'prototype']);
+const currencyCodePattern = /^[A-Z]{3}$/;
+const dateFormatPattern = /^(DD|MM|YYYY)([\/.\-])(DD|MM|YYYY)\2(DD|MM|YYYY)$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -37,6 +39,36 @@ function validIsoDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const parsed = new Date(`${value}T12:00:00.000Z`);
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+function validIsoTimestamp(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}T/.test(value) && Number.isFinite(Date.parse(value));
+}
+
+function validIanaTimezone(value: string): boolean {
+  if (value.length < 1 || value.length > 80 || forbiddenControlCharacters.test(value) || singleLineBreaks.test(value)) return false;
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value }).format(new Date());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function validDateFormat(value: string): boolean {
+  const match = dateFormatPattern.exec(value);
+  if (!match) return false;
+  const tokens = [match[1], match[3], match[4]];
+  return new Set(tokens).size === 3 && tokens.includes('DD') && tokens.includes('MM') && tokens.includes('YYYY');
+}
+
+function validationResponse(res: Parameters<RequestHandler>[1], message: string): void {
+  const body: ApiError = {
+    code: 'VALIDATION_FAILED',
+    message,
+    recoverable: true,
+  };
+  res.status(400).json({ error: body });
 }
 
 /**
@@ -83,9 +115,49 @@ export function transactionPayloadIssue(value: unknown): string | undefined {
   return undefined;
 }
 
+export function preferencePayloadIssue(value: unknown): string | undefined {
+  if (!isRecord(value)) return 'La configuración no tiene un formato válido.';
+  if (hasForbiddenObjectKey(value)) return 'La configuración contiene campos no permitidos.';
+
+  const allowedKeys = new Set(['expectedUpdatedAt', 'currency', 'dateFormat', 'timezone', 'monthlyBudget']);
+  if (Object.keys(value).some((key) => !allowedKeys.has(key))) return 'La configuración contiene campos no permitidos.';
+
+  if (typeof value.expectedUpdatedAt !== 'string' || !validIsoTimestamp(value.expectedUpdatedAt)) {
+    return 'La versión de la configuración no es válida.';
+  }
+
+  let changes = 0;
+  if (value.currency !== undefined) {
+    changes += 1;
+    if (typeof value.currency !== 'string' || !currencyCodePattern.test(value.currency)) {
+      return 'La moneda debe usar un código ISO de tres letras mayúsculas.';
+    }
+  }
+  if (value.dateFormat !== undefined) {
+    changes += 1;
+    if (typeof value.dateFormat !== 'string' || !validDateFormat(value.dateFormat)) {
+      return 'El formato de fecha no es válido.';
+    }
+  }
+  if (value.timezone !== undefined) {
+    changes += 1;
+    if (typeof value.timezone !== 'string' || !validIanaTimezone(value.timezone)) {
+      return 'La zona horaria no es válida.';
+    }
+  }
+  if (value.monthlyBudget !== undefined) {
+    changes += 1;
+    if (typeof value.monthlyBudget !== 'number' || !Number.isFinite(value.monthlyBudget) || value.monthlyBudget < 0 || value.monthlyBudget > MAX_TRANSACTION_AMOUNT) {
+      return 'El presupuesto mensual debe ser un número válido no negativo.';
+    }
+  }
+
+  if (changes === 0) return 'Envía al menos una preferencia válida.';
+  return undefined;
+}
+
 export const hardenTransactionInput: RequestHandler = (req, res, next) => {
   const candidate = req.method === 'PATCH' && isRecord(req.body) ? req.body.transaction : req.body;
-  // DELETE only carries expectedUpdatedAt and is validated by the base API.
   if (req.method === 'DELETE') {
     next();
     return;
@@ -96,11 +168,14 @@ export const hardenTransactionInput: RequestHandler = (req, res, next) => {
     next();
     return;
   }
+  validationResponse(res, issue);
+};
 
-  const body: ApiError = {
-    code: 'VALIDATION_FAILED',
-    message: issue,
-    recoverable: true,
-  };
-  res.status(400).json({ error: body });
+export const hardenPreferencesInput: RequestHandler = (req, res, next) => {
+  const issue = preferencePayloadIssue(req.body);
+  if (!issue) {
+    next();
+    return;
+  }
+  validationResponse(res, issue);
 };
