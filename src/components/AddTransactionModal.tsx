@@ -2,11 +2,13 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Calendar,
   Camera,
+  Check,
   ChevronDown,
   DollarSign,
   FolderOpen,
   Images,
   LoaderCircle,
+  RotateCcw,
   SlidersHorizontal,
   Upload,
   X,
@@ -62,6 +64,26 @@ function normalizeAmountInput(value: string): string | undefined {
   return undefined;
 }
 
+function formatReceiptAmount(result: ReceiptScanResult): string {
+  if (result.amount === null) return 'Monto por revisar';
+  try {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: result.currency || 'MXN',
+      maximumFractionDigits: 2,
+    }).format(result.amount);
+  } catch {
+    return `$${result.amount.toFixed(2)}`;
+  }
+}
+
+function formatReceiptDate(value: string | null): string {
+  if (!value) return 'Fecha por revisar';
+  const date = new Date(`${value}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'short' }).format(date);
+}
+
 export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClose, onSave, categories, transaction }) => {
   const [type, setType] = useState<TransactionType>(transaction?.type ?? 'expense');
   const filteredCategories = useMemo(
@@ -82,6 +104,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
   const [scanning, setScanning] = useState(false);
   const [receiptSourcesOpen, setReceiptSourcesOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [pendingReceipt, setPendingReceipt] = useState<ReceiptScanResult | null>(null);
   const [scanMessage, setScanMessage] = useState<string>();
   const [formError, setFormError] = useState<string>();
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -107,6 +130,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
     const nextCategory = categories.find((category) => category.active && category.type === nextType);
     setCategoryId(nextCategory?.id ?? '');
     setCostType(nextType === 'income' ? 'Ingreso' : 'Variable');
+    setPendingReceipt(null);
     setScanMessage(undefined);
     setReceiptSourcesOpen(false);
   };
@@ -137,13 +161,27 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
     const confidence = Math.round(result.confidence * 100);
     const warning = result.warnings[0];
     setScanMessage(warning
-      ? `Comprobante analizado (${confidence}% de confianza). ${warning}`
-      : `Comprobante analizado (${confidence}% de confianza). Revisa los datos antes de guardar.`);
+      ? `Comprobante aplicado (${confidence}% de confianza). ${warning}`
+      : `Comprobante aplicado (${confidence}% de confianza). Revisa los datos antes de guardar.`);
+  };
+
+  const acceptPendingReceipt = () => {
+    if (!pendingReceipt) return;
+    applyReceiptResult(pendingReceipt);
+    setPendingReceipt(null);
+  };
+
+  const rescanReceipt = () => {
+    setPendingReceipt(null);
+    setScanMessage(undefined);
+    setFormError(undefined);
+    setReceiptSourcesOpen(true);
   };
 
   const handleReceiptFile = async (file: File) => {
     setFormError(undefined);
     setScanMessage(undefined);
+    setPendingReceipt(null);
     setReceiptSourcesOpen(false);
     try {
       setScanning(true);
@@ -152,7 +190,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
         .filter((category) => category.active && category.type === type)
         .map((category) => category.name);
       const result = await scanReceipt(prepared, type, allowedCategories);
-      applyReceiptResult(result);
+      setPendingReceipt(result);
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'No pudimos analizar el comprobante. Puedes registrar el movimiento manualmente.');
     } finally {
@@ -169,6 +207,10 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setFormError(undefined);
+    if (pendingReceipt) {
+      setFormError('Acepta o descarta el comprobante analizado antes de guardar.');
+      return;
+    }
     const numericAmount = Number(amount);
     const selectedCategory = filteredCategories.find((category) => category.id === categoryId);
     if (!Number.isFinite(numericAmount) || numericAmount <= 0 || numericAmount > MAX_AMOUNT) {
@@ -324,6 +366,51 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
                         </button>
                       ))}
                     </div>
+                  )}
+
+                  {pendingReceipt && (
+                    <section
+                      className="overflow-hidden rounded-[20px] border border-white/[0.16] bg-white/[0.075] shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_14px_36px_rgba(0,0,0,0.20)] backdrop-blur-[28px]"
+                      aria-label="Confirmar comprobante detectado"
+                    >
+                      <div className="flex items-start gap-3 px-3.5 pb-3 pt-3.5">
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[14px] border border-white/[0.12] bg-white/[0.07] text-white/70">
+                          <Check size={18} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-white/35">Confirma antes de aplicar</span>
+                          <strong className="mt-1 block truncate text-[16px] font-semibold tracking-[-0.02em] text-white/90">
+                            {pendingReceipt.merchant || pendingReceipt.description || 'Comprobante detectado'}
+                          </strong>
+                          <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-white/55">
+                            <b className="text-[15px] font-semibold text-white/90">{formatReceiptAmount(pendingReceipt)}</b>
+                            <span aria-hidden="true">·</span>
+                            <span>{formatReceiptDate(pendingReceipt.date)}</span>
+                            <span aria-hidden="true">·</span>
+                            <span className="truncate">{pendingReceipt.category || 'Categoría por revisar'}</span>
+                          </div>
+                          {pendingReceipt.warnings[0] && (
+                            <p className="mt-2 line-clamp-2 text-[10.5px] leading-4 text-white/38">{pendingReceipt.warnings[0]}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5 border-t border-white/[0.08] bg-black/[0.08] p-2">
+                        <button
+                          type="button"
+                          className="flex h-10 items-center justify-center gap-1.5 rounded-[13px] border border-white/[0.12] bg-white/[0.05] text-[12px] font-semibold text-white/60 transition active:scale-[0.98]"
+                          onClick={rescanReceipt}
+                        >
+                          <RotateCcw size={14} />Volver a escanear
+                        </button>
+                        <button
+                          type="button"
+                          className="flex h-10 items-center justify-center gap-1.5 rounded-[13px] border border-white/70 bg-white/90 text-[12px] font-bold text-black transition active:scale-[0.98]"
+                          onClick={acceptPendingReceipt}
+                        >
+                          <Check size={14} />Aceptar
+                        </button>
+                      </div>
+                    </section>
                   )}
 
                   {scanMessage && (
@@ -515,9 +602,9 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
             <button
               className="h-11 min-w-0 flex-1 rounded-[15px] border border-white/70 bg-white/90 px-3 text-[14px] font-bold text-black shadow-[0_8px_24px_rgba(255,255,255,0.07),inset_0_1px_0_rgba(255,255,255,0.65)] backdrop-blur-xl transition active:scale-[0.99] disabled:opacity-50"
               type="submit"
-              disabled={saving || scanning}
+              disabled={saving || scanning || Boolean(pendingReceipt)}
             >
-              {saving ? 'Guardando…' : transaction ? 'Guardar cambios' : 'Guardar movimiento'}
+              {saving ? 'Guardando…' : pendingReceipt ? 'Confirma el comprobante' : transaction ? 'Guardar cambios' : 'Guardar movimiento'}
             </button>
             <button
               className={`h-11 shrink-0 rounded-[15px] px-3 text-[13px] font-semibold text-white/50 transition active:scale-[0.99] disabled:opacity-50 ${glassControl}`}
