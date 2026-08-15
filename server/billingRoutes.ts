@@ -12,7 +12,7 @@ import {
 } from './billingSheets';
 import { scanBillingTicketImage } from './billingScanner';
 import { parseCfdi40Xml } from './cfdi';
-import { AppError, errors } from './errors';
+import { errors } from './errors';
 import { assertReceiptImage } from './receiptScanner';
 
 const router = Router();
@@ -22,9 +22,18 @@ const identifierSchema = z.object({
   value: z.string().trim().min(1).max(180),
 }).strict();
 
+const httpUrlSchema = z.string().trim().url().max(1_000).refine((value) => {
+  try {
+    const protocol = new URL(value).protocol;
+    return protocol === 'https:' || protocol === 'http:';
+  } catch {
+    return false;
+  }
+}, 'La URL debe usar http o https.');
+
 const fileRefSchema = z.object({
   fileId: z.string().trim().min(3).max(220),
-  webViewUrl: z.string().trim().url().max(1_000).optional(),
+  webViewUrl: httpUrlSchema.optional(),
   name: z.string().trim().max(180).optional(),
   mimeType: z.string().trim().max(100).optional(),
 }).strict();
@@ -41,7 +50,7 @@ const ticketSchema = z.object({
   paymentMethod: z.string().trim().max(80).optional(),
   cardLast4: z.string().regex(/^\d{4}$/).optional(),
   identifiers: z.array(identifierSchema).max(20).default([]),
-  invoiceUrl: z.string().trim().url().max(500).optional(),
+  invoiceUrl: httpUrlSchema.max(500).optional(),
   qrData: z.string().trim().max(2_000).optional(),
   image: fileRefSchema.optional(),
   status: z.enum(['pending', 'invoiced', 'not_required']).default('pending'),
@@ -167,11 +176,6 @@ router.patch('/tickets/:id/status', async (req, res, next) => {
     const { uid } = authenticated(req);
     const id = z.string().trim().min(1).max(100).parse(req.params.id);
     const body = parse(ticketStatusSchema, req.body);
-    if (body.status === 'invoiced' && !body.cfdiUuid) {
-      const snapshot = await loadBillingSnapshot(uid);
-      const existing = snapshot.tickets.find((ticket) => ticket.id === id);
-      if (!existing?.cfdiUuid) throw errors.validation('Para marcarlo como facturado, importa el XML CFDI o captura su UUID.');
-    }
     res.status(200).json({ data: await updateBillingTicketStatus(uid, id, body.status, body.cfdiUuid) });
   } catch (error) {
     next(error instanceof ZodError ? errors.validation('El ticket indicado no es válido.') : error);
