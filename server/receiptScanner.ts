@@ -221,26 +221,49 @@ export function parseReceiptModelResult(raw: string, allowedCategories: string[]
   return normalized;
 }
 
+interface OpenRouterProviderError {
+  code?: string | number;
+  message?: string;
+  metadata?: {
+    error_type?: string;
+    provider_code?: string | number;
+  };
+}
+
 interface OpenRouterResponse {
   model?: string;
-  choices?: Array<{ message?: { content?: string | null } }>;
+  error?: OpenRouterProviderError;
+  choices?: Array<{
+    message?: { content?: string | null };
+    finish_reason?: string | null;
+    error?: OpenRouterProviderError;
+  }>;
 }
 
 interface OpenRouterErrorResponse {
-  error?: { code?: string | number };
+  error?: OpenRouterProviderError;
 }
 
 interface OpenRouterRouting {
-  model?: string;
-  models?: string[];
+  model: string;
   label: string;
+}
+
+function providerCodeFromError(error: OpenRouterProviderError | undefined): string {
+  if (!error) return 'unknown';
+  const code = error.metadata?.provider_code ?? error.metadata?.error_type ?? error.code;
+  if (typeof code === 'string' || typeof code === 'number') return String(code).slice(0, 80);
+  return 'unknown';
+}
+
+function providerStatusFromError(error: OpenRouterProviderError | undefined): number {
+  const status = Number(error?.code);
+  return Number.isInteger(status) && status >= 400 && status <= 599 ? status : 502;
 }
 
 function safeProviderCode(payload: unknown): string {
   if (!payload || typeof payload !== 'object') return 'unknown';
-  const code = (payload as OpenRouterErrorResponse).error?.code;
-  if (typeof code === 'string' || typeof code === 'number') return String(code).slice(0, 80);
-  return 'unknown';
+  return providerCodeFromError((payload as OpenRouterErrorResponse).error);
 }
 
 function isCredentialOrBillingFailure(error: unknown): boolean {
@@ -297,8 +320,7 @@ async function requestOpenRouter(
       headers,
       signal: AbortSignal.timeout(35_000),
       body: JSON.stringify({
-        ...(routing.model ? { model: routing.model } : {}),
-        ...(routing.models && routing.models.length > 0 ? { models: routing.models } : {}),
+        model: routing.model,
         messages: [
           { role: 'system', content: RECEIPT_SYSTEM_PROMPT },
           {
@@ -334,6 +356,7 @@ async function requestOpenRouter(
       status: 0,
       code: error instanceof Error ? error.name : 'network_error',
       route: routing.label,
+      model: routing.model,
     });
     throw new OpenRouterAttemptError(0, error instanceof Error ? error.name : 'network_error', routing.label);
   }
@@ -350,6 +373,7 @@ async function requestOpenRouter(
       status: response.status,
       code: providerCode,
       route: routing.label,
+      model: routing.model,
     });
     throw new OpenRouterAttemptError(response.status, providerCode, routing.label);
   }
@@ -358,15 +382,34 @@ async function requestOpenRouter(
   try {
     payload = await response.json() as OpenRouterResponse;
   } catch {
-    console.error('OpenRouter receipt response invalid', { route: routing.label, code: 'invalid_json_response' });
+    console.error('OpenRouter receipt response invalid', { route: routing.label, code: 'invalid_json_response', model: routing.model });
     throw new OpenRouterAttemptError(502, 'invalid_json_response', routing.label);
   }
 
-  const content = payload.choices?.[0]?.message?.content;
+  const choice = payload.choices?.[0];
+  const providerError = choice?.error ?? payload.error;
+  if (providerError || choice?.finish_reason === 'error') {
+    const status = providerStatusFromError(providerError);
+    const providerCode = providerCodeFromError(providerError);
+    console.error('OpenRouter receipt generation failed', {
+      status,
+      code: providerCode,
+      route: routing.label,
+      model: payload.model ?? routing.model,
+    });
+    throw new OpenRouterAttemptError(status, providerCode, routing.label);
+  }
+
+  const content = choice?.message?.content;
   if (typeof content !== 'string' || !content.trim()) {
-    console.error('OpenRouter receipt response invalid', { route: routing.label, code: 'empty_content', model: payload.model ?? 'unknown' });
+    console.error('OpenRouter receipt response invalid', {
+      route: routing.label,
+      code: 'empty_content',
+      model: payload.model ?? routing.model,
+    });
     throw new OpenRouterAttemptError(502, 'empty_content', routing.label);
   }
+
   return { content, model: payload.model };
 }
 
@@ -377,45 +420,36 @@ export async function scanReceiptImage(input: {
   preferredType?: TransactionType;
 }): Promise<ReceiptScanResult> {
   const { primary, paid, fallback } = configuredModels();
-  const fallbackModels = [...new Set([paid, fallback].filter((model) => model && model !== primary))];
+  const models = [...new Set([primary, paid, fallback].filter(Boolean))];
+  let lastFailure: unknown;
 
-  let firstFailure: unknown;
-  try {
-    const first = await requestOpenRouter(
-      input.image,
-      input.mimeType,
-      input.allowedCategories,
-      input.preferredType,
-      { model: primary, label: 'primary' },
-    );
+  for (const [index, model] of models.entries()) {
+    const label = index === 0 ? 'primary' : `fallback-${index}`;
     try {
-      return parseReceiptModelResult(first.content, input.allowedCategories);
+      const response = await requestOpenRouter(
+        input.image,
+        input.mimeType,
+        input.allowedCategories,
+        input.preferredType,
+        { model, label },
+      );
+
+      try {
+        return parseReceiptModelResult(response.content, input.allowedCategories);
+      } catch (error) {
+        if (error instanceof AppError && error.code === 'VALIDATION_FAILED') throw error;
+        lastFailure = error;
+        console.warn('Receipt model output rejected', {
+          model: response.model ?? model,
+          code: error instanceof AppError ? error.code : 'invalid_output',
+        });
+      }
     } catch (error) {
       if (error instanceof AppError && error.code === 'VALIDATION_FAILED') throw error;
-      firstFailure = error;
-      console.warn('Receipt model output rejected', {
-        model: first.model ?? primary,
-        code: error instanceof AppError ? error.code : 'invalid_output',
-      });
+      if (isCredentialOrBillingFailure(error)) throw mapOpenRouterFailure(error);
+      lastFailure = error;
     }
-  } catch (error) {
-    firstFailure = error;
-    if (error instanceof AppError && error.code === 'VALIDATION_FAILED') throw error;
-    if (isCredentialOrBillingFailure(error)) throw mapOpenRouterFailure(error);
   }
 
-  if (fallbackModels.length === 0) throw mapOpenRouterFailure(firstFailure);
-
-  try {
-    const second = await requestOpenRouter(
-      input.image,
-      input.mimeType,
-      input.allowedCategories,
-      input.preferredType,
-      { models: fallbackModels, label: 'fallback' },
-    );
-    return parseReceiptModelResult(second.content, input.allowedCategories);
-  } catch (error) {
-    throw mapOpenRouterFailure(error);
-  }
+  throw mapOpenRouterFailure(lastFailure);
 }

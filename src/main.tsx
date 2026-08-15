@@ -1,8 +1,11 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
+import {Analytics} from '@vercel/analytics/react';
 import App from './App.tsx';
+import {installClientGuards} from './lib/clientGuards';
 import './index.css';
 import './mobile-polish.css';
+import './billqo-premium.css';
 
 // The local OAuth callback is registered on 127.0.0.1.  `localhost` and
 // `127.0.0.1` are different browser origins, so using both would make the
@@ -16,6 +19,8 @@ if (mustUseCanonicalLocalOrigin) {
   canonicalUrl.hostname = '127.0.0.1';
   window.location.replace(canonicalUrl.toString());
 } else {
+  installClientGuards();
+
   // Google branding fields use clean, public URLs.  The app itself uses a
   // HashRouter, so normalize those public aliases before React mounts.
   if ((publicRoute === '/privacy' || publicRoute === '/terms') && !window.location.hash) {
@@ -25,6 +30,7 @@ if (mustUseCanonicalLocalOrigin) {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <App />
+      <Analytics />
     </StrictMode>,
   );
 }

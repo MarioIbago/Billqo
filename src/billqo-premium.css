@@ -1,0 +1,299 @@
+/* Billqo premium polish: SF-style typography, layered glass and a grayscale animated backdrop. */
+
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", "Segoe UI", Arial, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --billqo-glass: rgba(18, 19, 22, .72);
+  --billqo-panel: rgba(14, 15, 17, .91);
+  --billqo-line: rgba(255,255,255,.10);
+  --billqo-line-strong: rgba(255,255,255,.16);
+}
+
+body,
+button,
+input,
+select,
+textarea {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", "Segoe UI", Arial, sans-serif;
+}
+
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+img { -webkit-user-drag: none; }
+
+/* Fixed grayscale ColorBends backdrop ---------------------------------- */
+.billqo-color-bends {
+  position: fixed;
+  z-index: 0;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: linear-gradient(180deg, #08090a 0%, #030405 52%, #000 100%);
+}
+
+#root > *:not(.billqo-color-bends) { position: relative; z-index: 1; }
+
+.billqo-color-bend {
+  position: absolute;
+  display: block;
+  width: 92vmax;
+  height: calc(22vmax + (var(--bend-width) * 24vmax));
+  border-radius: 50%;
+  opacity: calc(.075 * var(--bend-intensity));
+  filter: blur(46px) saturate(.1);
+  transform-origin: center;
+  mix-blend-mode: screen;
+  will-change: transform;
+}
+
+.billqo-color-bend-a {
+  top: calc(-18vmax * var(--bend-fade-top));
+  left: -26vmax;
+  background: linear-gradient(90deg, transparent 4%, var(--bend-secondary) 38%, var(--bend-primary) 54%, transparent 86%);
+  transform: rotate(var(--bend-rotation));
+  animation: billqo-bend-a var(--bend-duration) ease-in-out infinite alternate;
+}
+
+.billqo-color-bend-b {
+  top: 32vh;
+  right: -34vmax;
+  background: linear-gradient(90deg, transparent 8%, var(--bend-primary) 47%, var(--bend-secondary) 66%, transparent 92%);
+  transform: rotate(calc(var(--bend-rotation) - 38deg));
+  animation: billqo-bend-b calc(var(--bend-duration) * 1.25) ease-in-out infinite alternate;
+}
+
+.billqo-color-bend-c {
+  bottom: -22vmax;
+  left: -20vmax;
+  background: linear-gradient(90deg, transparent 7%, var(--bend-secondary) 45%, var(--bend-primary) 60%, transparent 91%);
+  transform: rotate(calc(var(--bend-rotation) + 34deg));
+  opacity: calc(.055 * var(--bend-intensity));
+  animation: billqo-bend-c calc(var(--bend-duration) * 1.45) ease-in-out infinite alternate;
+}
+
+.billqo-color-bends-noise {
+  position: absolute;
+  inset: 0;
+  opacity: calc(var(--bend-noise) * .14);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.88' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.48'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
+}
+
+@keyframes billqo-bend-a {
+  to { transform: translate3d(10vw, 7vh, 0) rotate(calc(var(--bend-rotation) + 10deg)) scale(1.08); }
+}
+@keyframes billqo-bend-b {
+  to { transform: translate3d(-12vw, -6vh, 0) rotate(calc(var(--bend-rotation) - 30deg)) scale(1.1); }
+}
+@keyframes billqo-bend-c {
+  to { transform: translate3d(9vw, -8vh, 0) rotate(calc(var(--bend-rotation) + 25deg)) scale(1.06); }
+}
+
+/* Let the grayscale reflections show through the existing dark shell. */
+.crystal-public-page,
+.crystal-app-shell,
+.crystal-workspace {
+  background-color: rgba(0,0,0,.70) !important;
+  background-image: linear-gradient(180deg, rgba(0,0,0,.24), rgba(0,0,0,.64)) !important;
+}
+
+/* Responsive Billqo brand --------------------------------------------- */
+.billqo-responsive-brand {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-width: 0;
+  line-height: 0;
+}
+.billqo-responsive-brand img {
+  display: block;
+  width: auto;
+  height: 34px;
+  max-width: 170px;
+  object-fit: contain;
+  object-position: left center;
+  pointer-events: none;
+  user-select: none;
+}
+.billqo-responsive-brand.is-compact img { height: 27px; max-width: 128px; }
+
+/* Authenticated workspace: the supplied PNG already contains the word Billqo. */
+.crystal-workspace-brand {
+  width: 132px !important;
+  min-width: 132px !important;
+  height: 42px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent url("https://i.imgur.com/iUXvcaN.png") left center / contain no-repeat !important;
+  box-shadow: none !important;
+}
+.crystal-workspace-brand > * { display: none !important; }
+.crystal-workspace-actions { margin-left: auto !important; }
+
+/* Glass hierarchy ------------------------------------------------------ */
+.crystal-workspace-header,
+.crystal-landing-header {
+  border-color: var(--billqo-line) !important;
+  background: linear-gradient(180deg, rgba(20,21,24,.76), rgba(7,8,10,.58)) !important;
+  box-shadow: 0 16px 40px rgba(0,0,0,.34), inset 0 -1px 0 rgba(255,255,255,.035) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(145%) !important;
+  backdrop-filter: blur(30px) saturate(145%) !important;
+}
+
+.crystal-mobile-nav,
+.crystal-more-menu,
+.crystal-landing-menu,
+.crystal-privacy-public-header {
+  border: 1px solid var(--billqo-line-strong) !important;
+  background: rgba(17,18,21,.76) !important;
+  box-shadow: 0 22px 58px rgba(0,0,0,.48), inset 0 1px 0 rgba(255,255,255,.06) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(150%) !important;
+  backdrop-filter: blur(30px) saturate(150%) !important;
+}
+
+.crystal-panel,
+.crystal-landing-sheet-card,
+.crystal-privacy-public-card {
+  border: 1px solid var(--billqo-line) !important;
+  background: linear-gradient(180deg, rgba(21,22,25,.91), rgba(10,11,13,.88)) !important;
+  box-shadow: 0 18px 52px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.045) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(125%);
+  backdrop-filter: blur(20px) saturate(125%);
+}
+
+.crystal-icon-button,
+.crystal-button-ghost,
+.crystal-back-link,
+.crystal-legal-link {
+  border: 1px solid rgba(255,255,255,.12) !important;
+  background: rgba(255,255,255,.055) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.055) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+
+.crystal-button,
+.crystal-icon-button,
+.crystal-landing-primary-button,
+.crystal-landing-login-button,
+.crystal-back-link,
+.crystal-legal-link {
+  transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease !important;
+}
+.crystal-button:hover,
+.crystal-icon-button:hover,
+.crystal-landing-primary-button:hover,
+.crystal-landing-login-button:hover,
+.crystal-back-link:hover,
+.crystal-legal-link:hover { transform: translateY(-1px); }
+.crystal-button:active,
+.crystal-icon-button:active,
+.crystal-landing-primary-button:active,
+.crystal-landing-login-button:active,
+.crystal-back-link:active,
+.crystal-legal-link:active { transform: scale(.985); }
+
+.crystal-screen-heading h1,
+.crystal-landing-hero h1,
+.crystal-landing-section-copy h2,
+.crystal-privacy-public-intro h1 {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif !important;
+  font-weight: 650 !important;
+  letter-spacing: -.045em !important;
+  text-wrap: balance;
+}
+
+/* Legal pages ---------------------------------------------------------- */
+.crystal-privacy-public {
+  width: min(1120px, calc(100% - 32px)) !important;
+  padding: 22px 0 64px !important;
+}
+.crystal-privacy-public-header {
+  position: sticky;
+  z-index: 20;
+  top: 12px;
+  min-height: 58px;
+  padding: 9px 10px 9px 14px !important;
+  border-radius: 20px !important;
+}
+.crystal-privacy-public-intro {
+  max-width: 790px !important;
+  padding: 82px 4px 48px !important;
+}
+.crystal-privacy-public-intro h1 {
+  max-width: 760px;
+  font-size: clamp(42px, 6vw, 74px) !important;
+  line-height: .98 !important;
+}
+.crystal-privacy-public-intro > p {
+  max-width: 700px !important;
+  margin-top: 24px !important;
+  color: rgba(255,255,255,.64) !important;
+  font-size: 15px !important;
+  line-height: 1.72 !important;
+}
+.crystal-privacy-public-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+  gap: 14px !important;
+}
+.crystal-privacy-public-card {
+  min-height: 220px;
+  padding: 26px !important;
+  border-radius: 24px !important;
+}
+.crystal-privacy-public-card h2 {
+  margin-top: 17px !important;
+  color: rgba(255,255,255,.96) !important;
+  font-size: 18px !important;
+  font-weight: 650 !important;
+  letter-spacing: -.03em !important;
+}
+.crystal-privacy-public-card p,
+.crystal-privacy-public-card li {
+  color: rgba(255,255,255,.61) !important;
+  font-size: 12.5px !important;
+  line-height: 1.68 !important;
+}
+
+@media (max-width: 767px) {
+  .billqo-responsive-brand img { width: 32px; height: 32px; max-width: 32px; object-fit: contain; }
+  .billqo-responsive-brand.is-compact img { width: 27px; height: 27px; max-width: 27px; }
+
+  .crystal-workspace-header-inner {
+    justify-content: space-between !important;
+    padding-right: 10px !important;
+  }
+  .crystal-workspace-brand {
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    background-image: url("https://i.imgur.com/ZnXojOq.png") !important;
+  }
+  .crystal-workspace-actions {
+    margin-left: auto !important;
+    padding-right: 0 !important;
+  }
+  .crystal-mobile-header-menu { margin-left: auto !important; margin-right: 0 !important; }
+  .crystal-landing-menu-button { margin-left: auto !important; margin-right: 0 !important; }
+
+  .crystal-privacy-public { width: min(100% - 20px, 700px) !important; padding-top: 10px !important; }
+  .crystal-privacy-public-header { top: 7px; border-radius: 17px !important; }
+  .crystal-privacy-public-intro { padding: 58px 4px 32px !important; }
+  .crystal-privacy-public-intro h1 { font-size: clamp(38px, 12vw, 56px) !important; }
+  .crystal-privacy-public-intro > p { font-size: 13px !important; }
+  .crystal-privacy-public-grid { grid-template-columns: 1fr !important; gap: 10px !important; }
+  .crystal-privacy-public-card { min-height: 0; padding: 22px !important; border-radius: 21px !important; }
+  .billqo-color-bend { filter: blur(38px) saturate(.05); opacity: calc(.055 * var(--bend-intensity)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .billqo-color-bend { animation: none !important; }
+  .crystal-button,
+  .crystal-icon-button,
+  .crystal-landing-primary-button,
+  .crystal-landing-login-button,
+  .crystal-back-link,
+  .crystal-legal-link { transition: none !important; }
+}
