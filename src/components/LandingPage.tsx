@@ -96,7 +96,7 @@ export const LandingPage: React.FC = () => {
           <section className="crystal-landing-hero" aria-labelledby="landing-title">
             <div className="crystal-landing-hero-copy">
               <h1 id="landing-title">Tu dinero, claro<br />y bajo tu control.</h1>
-              <p>Billqo es un espacio simple para registrar, organizar y entender tus finanzas. Entras con Google y la información financiera permanece en tu propio Google Sheet.</p>
+              <p>Tu información financiera, disponible en todos tus dispositivos de forma segura.</p>
 
               <div className="crystal-landing-hero-actions">
                 <button type="button" className="crystal-landing-primary-button" onClick={openAuth}>
