@@ -2,6 +2,7 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import './mobile-polish.css';
 
 // The local OAuth callback is registered on 127.0.0.1.  `localhost` and
 // `127.0.0.1` are different browser origins, so using both would make the

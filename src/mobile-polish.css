@@ -1,0 +1,65 @@
+@media (max-width: 560px) {
+  /* Keep the dashboard period control in the heading instead of floating over the card/orb. */
+  .crystal-screen-heading .crystal-heading-actions .crystal-select {
+    position: static;
+    top: auto;
+    right: auto;
+  }
+
+  /* Override the older mobile min-width rules so search + category fit in one compact row. */
+  .crystal-filter-panel > .grid .crystal-search,
+  .crystal-filter-panel > .grid .crystal-select {
+    min-width: 0;
+  }
+
+  .crystal-filter-panel > .grid .crystal-select select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .crystal-filter-panel > .grid .crystal-filter-count {
+    display: none;
+  }
+
+  /* Keep the ticket editor compact on iPhone-sized screens without changing its fields or behavior. */
+  .crystal-public-page section.crystal-panel > form.grid {
+    gap: 10px;
+  }
+
+  .crystal-public-page section.crystal-panel > form.grid > div.grid {
+    gap: 8px;
+  }
+
+  .crystal-public-page section.crystal-panel > form.grid > div.grid:not(.grid-cols-3) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .crystal-public-page section.crystal-panel > form.grid label {
+    gap: 4px;
+    font-size: 11px;
+  }
+
+  .crystal-public-page section.crystal-panel > form.grid input,
+  .crystal-public-page section.crystal-panel > form.grid select {
+    min-height: 40px;
+    padding-left: 10px;
+    padding-right: 10px;
+    font-size: 12px;
+  }
+
+  .crystal-public-page section.crystal-panel > form.grid textarea {
+    min-height: 64px;
+    padding: 10px;
+    font-size: 12px;
+  }
+
+  .crystal-public-page section.crystal-panel > form.grid button.h-11 {
+    height: 40px;
+  }
+}
+
+@media (max-width: 340px) {
+  .crystal-public-page section.crystal-panel > form.grid > div.grid:not(.grid-cols-3) {
+    grid-template-columns: 1fr;
+  }
+}
