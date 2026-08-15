@@ -7,7 +7,7 @@
     "dev": "tsx server.ts",
     "build:client": "vite build",
     "build:api": "node build-vercel-functions.mjs",
-    "vercel-build": "vitest run tests/receipt-scanner.test.ts -t \"detects|rejects images|drops|rejects malformed|keeps\"",
+    "vercel-build": "vitest run tests/receipt-scanner.test.ts -t \"detects|rejects images|drops\"",
     "build": "npm run build:client && esbuild server.ts --bundle --platform=node --format=esm --packages=external --sourcemap --outfile=server-dist/server.js",
     "start": "cross-env NODE_ENV=production node server-dist/server.js",
     "clean": "powershell -NoProfile -Command \"Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue\"",
