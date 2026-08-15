@@ -51,6 +51,24 @@ app.use('/api/receipts/scan', receiptErrorHandler);
 // JSON parser marks the body as parsed, so the base app will not read it twice.
 app.use('/api/transactions', express.json({ limit: '32kb' }), hardenTransactionInput);
 
+const transactionBodyErrorHandler: ErrorRequestHandler = (error, _req, res, next) => {
+  const type = error && typeof error === 'object' && 'type' in error ? String(error.type) : '';
+  if (type !== 'entity.too.large' && type !== 'entity.parse.failed') {
+    next(error);
+    return;
+  }
+
+  const body: ApiError = {
+    code: 'VALIDATION_FAILED',
+    message: type === 'entity.too.large'
+      ? 'Los datos del movimiento son demasiado grandes.'
+      : 'Los datos del movimiento no contienen JSON válido.',
+    recoverable: true,
+  };
+  res.status(type === 'entity.too.large' ? 413 : 400).json({ error: body });
+};
+
+app.use('/api/transactions', transactionBodyErrorHandler);
 app.use(baseApp);
 
 export default app;
