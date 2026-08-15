@@ -1,21 +1,13 @@
 import React from 'react';
 
-const BILLQO_ASSET_BASE_URL =
-  'https://raw.githubusercontent.com/MarioIbago/cuantly-svg-assets/main/billqo-assets';
-
-const BILLQO_WORDMARK_STYLE: React.CSSProperties = {
-  fontFamily:
-    '"SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif',
-  fontWeight: 400,
-  fontStyle: 'normal',
-  letterSpacing: '-0.01em',
-};
+export const BILLQO_MOBILE_LOGO_URL = 'https://i.imgur.com/ZnXojOq.png';
+export const BILLQO_DESKTOP_LOGO_URL = 'https://i.imgur.com/iUXvcaN.png';
 
 export function CuantlyMark({ size = 28, className = '' }: { size?: number; className?: string }) {
   return (
     <img
       className={`cuantly-mark ${className}`.trim()}
-      src={`${BILLQO_ASSET_BASE_URL}/mark-black-transparent.png`}
+      src={BILLQO_MOBILE_LOGO_URL}
       width={size}
       height={size}
       style={{ width: size, height: size, objectFit: 'contain' }}
@@ -29,12 +21,14 @@ export function CuantlyMark({ size = 28, className = '' }: { size?: number; clas
 
 export function CuantlyBrand({ compact = false, className = '' }: { compact?: boolean; className?: string }) {
   return (
-    <div className={`cuantly-brand ${compact ? 'is-compact' : ''} ${className}`.trim()}>
-      <CuantlyMark size={compact ? 24 : 29} />
-      <span>
-        <strong style={BILLQO_WORDMARK_STYLE}>Billqo</strong>
-        {!compact && <small>Controla. Analiza. Decide.</small>}
-      </span>
-    </div>
+    <picture className={`cuantly-brand billqo-responsive-brand ${compact ? 'is-compact' : ''} ${className}`.trim()}>
+      <source media="(max-width: 767px)" srcSet={BILLQO_MOBILE_LOGO_URL} />
+      <img
+        src={BILLQO_DESKTOP_LOGO_URL}
+        alt="Billqo"
+        decoding="async"
+        draggable={false}
+      />
+    </picture>
   );
 }
