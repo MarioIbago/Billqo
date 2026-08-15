@@ -2,6 +2,7 @@ import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Dashboard } from './Dashboard';
 import { AuthScreen } from './components/AuthScreen';
+import { ColorBends } from './components/ColorBends';
 import { LandingPage } from './components/LandingPage';
 import { PrivacyPage } from './components/PrivacyPage';
 import { TermsPage } from './components/TermsPage';
@@ -20,18 +21,32 @@ export default function App() {
   }
 
   return (
-    <HashRouter>
-      <Routes>
-        <Route path="/" element={user ? <Navigate to="/app" replace /> : <LandingPage />} />
-        <Route
-          path="/auth"
-          element={hasGoogleAuthCallback() || !user ? <AuthScreen /> : <Navigate to="/app" replace />}
-        />
-        <Route path="/privacy" element={<PrivacyPage />} />
-        <Route path="/terms" element={<TermsPage />} />
-        <Route path="/app/*" element={user ? <Dashboard /> : <Navigate to="/auth" replace />} />
-        <Route path="*" element={<Navigate to={user ? '/app' : '/'} replace />} />
-      </Routes>
-    </HashRouter>
+    <>
+      <ColorBends
+        color="#F4F4F5"
+        colorSecondary="#8E8E93"
+        speed={0.2}
+        frequency={1}
+        noise={0.15}
+        bandWidth={0.14}
+        rotation={90}
+        fadeTop={0.75}
+        iterations={1}
+        intensity={1.3}
+      />
+      <HashRouter>
+        <Routes>
+          <Route path="/" element={user ? <Navigate to="/app" replace /> : <LandingPage />} />
+          <Route
+            path="/auth"
+            element={hasGoogleAuthCallback() || !user ? <AuthScreen /> : <Navigate to="/app" replace />}
+          />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/app/*" element={user ? <Dashboard /> : <Navigate to="/auth" replace />} />
+          <Route path="*" element={<Navigate to={user ? '/app' : '/'} replace />} />
+        </Routes>
+      </HashRouter>
+    </>
   );
 }
