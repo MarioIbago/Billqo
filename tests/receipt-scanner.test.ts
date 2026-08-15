@@ -150,7 +150,7 @@ describe('receipt scanner', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('uses paid cheap models only if the free response cannot be validated', async () => {
+  it('tries the paid model only after the free response cannot be validated', async () => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({
@@ -158,7 +158,7 @@ describe('receipt scanner', () => {
         choices: [{ message: { content: '{bad-json' } }],
       }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
-        model: 'google/gemini-2.5-flash-lite',
+        model: 'google/gemma-3-4b-it',
         choices: [{ message: { content: JSON.stringify(validExpense()) } }],
       }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
@@ -172,10 +172,34 @@ describe('receipt scanner', () => {
     expect(result.amount).toBe(125.5);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const secondBody = JSON.parse(String((fetchMock.mock.calls[1][1] as RequestInit).body));
-    expect(secondBody.models).toEqual([
-      'google/gemma-3-4b-it',
-      'google/gemini-2.5-flash-lite',
-    ]);
+    expect(secondBody.model).toBe('google/gemma-3-4b-it');
+    expect(secondBody.models).toBeUndefined();
+  });
+
+  it('continues to the final fallback when a paid provider fails during generation', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: 502 } }), { status: 502 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        model: 'google/gemma-3-4b-it',
+        choices: [{ finish_reason: 'error', error: { code: 502, metadata: { error_type: 'provider_error' } } }],
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        model: 'google/gemini-2.5-flash-lite',
+        choices: [{ message: { content: JSON.stringify(validExpense()) } }],
+      }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await scanReceiptImage({
+      image: jpegBuffer(),
+      mimeType: 'image/jpeg',
+      allowedCategories: ['Comida'],
+    });
+
+    expect(result.category).toBe('Comida');
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const thirdBody = JSON.parse(String((fetchMock.mock.calls[2][1] as RequestInit).body));
+    expect(thirdBody.model).toBe('google/gemini-2.5-flash-lite');
   });
 
   it('falls back when the free router has no compatible endpoint', async () => {
