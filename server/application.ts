@@ -3,7 +3,7 @@ import type { ApiError } from '../src/types';
 import { requireFirebaseAuth } from './auth';
 import baseApp from './app';
 import { AppError, toApiError } from './errors';
-import { hardenTransactionInput } from './inputHardening';
+import { hardenPreferencesInput, hardenTransactionInput } from './inputHardening';
 import { limitAuthenticatedApi, limitInboundApi } from './rateLimit';
 import receiptRouter from './receiptRoutes';
 
@@ -46,12 +46,12 @@ const receiptErrorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
 
 app.use('/api/receipts/scan', receiptErrorHandler);
 
-// Parse only the small transaction payload here so hostile or oversized input is
-// rejected before it reaches the larger base application contract. Express 4's
-// JSON parser marks the body as parsed, so the base app will not read it twice.
+// Parse small mutable finance payloads before the base app so malformed or
+// oversized input never reaches the main financial handlers.
 app.use('/api/transactions', express.json({ limit: '32kb' }), hardenTransactionInput);
+app.use('/api/preferences', express.json({ limit: '8kb' }), hardenPreferencesInput);
 
-const transactionBodyErrorHandler: ErrorRequestHandler = (error, _req, res, next) => {
+const structuredBodyErrorHandler: ErrorRequestHandler = (error, _req, res, next) => {
   const type = error && typeof error === 'object' && 'type' in error ? String(error.type) : '';
   if (type !== 'entity.too.large' && type !== 'entity.parse.failed') {
     next(error);
@@ -61,14 +61,15 @@ const transactionBodyErrorHandler: ErrorRequestHandler = (error, _req, res, next
   const body: ApiError = {
     code: 'VALIDATION_FAILED',
     message: type === 'entity.too.large'
-      ? 'Los datos del movimiento son demasiado grandes.'
-      : 'Los datos del movimiento no contienen JSON válido.',
+      ? 'Los datos enviados son demasiado grandes.'
+      : 'Los datos enviados no contienen JSON válido.',
     recoverable: true,
   };
   res.status(type === 'entity.too.large' ? 413 : 400).json({ error: body });
 };
 
-app.use('/api/transactions', transactionBodyErrorHandler);
+app.use('/api/transactions', structuredBodyErrorHandler);
+app.use('/api/preferences', structuredBodyErrorHandler);
 app.use(baseApp);
 
 export default app;
