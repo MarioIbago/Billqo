@@ -1,4 +1,26 @@
 @media (max-width: 560px) {
+  /* Keep the dashboard period control in the heading instead of floating over the card/orb. */
+  .crystal-screen-heading .crystal-heading-actions .crystal-select {
+    position: static;
+    top: auto;
+    right: auto;
+  }
+
+  /* Override the older mobile min-width rules so search + category fit in one compact row. */
+  .crystal-filter-panel > .grid .crystal-search,
+  .crystal-filter-panel > .grid .crystal-select {
+    min-width: 0;
+  }
+
+  .crystal-filter-panel > .grid .crystal-select select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .crystal-filter-panel > .grid .crystal-filter-count {
+    display: none;
+  }
+
   /* Keep the ticket editor compact on iPhone-sized screens without changing its fields or behavior. */
   .crystal-public-page section.crystal-panel > form.grid {
     gap: 10px;
