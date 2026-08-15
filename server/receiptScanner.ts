@@ -174,8 +174,8 @@ export function parseReceiptModelResult(raw: string, allowedCategories: string[]
     throw errors.validation('La imagen no parece ser un ticket, recibo, factura o comprobante de pago válido. Selecciona un comprobante financiero.');
   }
 
-  const warnings = [...value.warnings];
-  let category = value.category;
+  const warnings = [...(value.warnings ?? [])];
+  let category = value.category ?? null;
 
   if (category) {
     const requested = normalizeCategory(category);
@@ -192,9 +192,19 @@ export function parseReceiptModelResult(raw: string, allowedCategories: string[]
   if (!value.paymentMethod) warnings.push('Revisa el método de pago antes de guardar.');
 
   const normalized: ReceiptScanResult = {
-    ...value,
-    description: value.description ?? value.merchant,
+    type: value.type ?? 'expense',
+    merchant: value.merchant ?? null,
+    description: value.description ?? value.merchant ?? null,
+    amount: value.amount ?? null,
+    currency: value.currency ?? null,
+    date: value.date ?? null,
+    paymentMethod: value.paymentMethod ?? null,
     category,
+    costType: value.costType ?? null,
+    fixedVariable: value.fixedVariable ?? null,
+    necessity: value.necessity ?? null,
+    influence: value.influence ?? null,
+    confidence: value.confidence ?? 0,
     warnings: safeWarnings(warnings),
   };
 
