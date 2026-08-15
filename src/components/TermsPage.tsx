@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, FileText, ShieldCheck, UserCheck, WalletCards } from 'lucide-react';
+import { ArrowLeft, FileCode2, FileText, ShieldCheck, UserCheck, WalletCards } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CuantlyBrand } from './CuantlyBrand';
 
@@ -23,7 +23,7 @@ export const TermsPage: React.FC = () => {
         <section className="crystal-privacy-public-intro">
           <span className="crystal-eyebrow">Uso responsable</span>
           <h1 id="terms-page-title">Términos de uso<br />de Billqo.</h1>
-          <p>Al usar Billqo aceptas estos términos. La aplicación te ayuda a organizar información financiera; no sustituye asesoría financiera, fiscal, legal o contable profesional.</p>
+          <p>Al usar Billqo aceptas estos términos. La aplicación te ayuda a organizar información financiera y fiscal; no sustituye asesoría financiera, fiscal, legal o contable profesional.</p>
         </section>
 
         <div className="crystal-privacy-public-grid">
@@ -40,9 +40,16 @@ export const TermsPage: React.FC = () => {
           </section>
 
           <section className="crystal-panel crystal-privacy-public-card">
+            <FileCode2 size={19} />
+            <h2>Tickets y CFDI</h2>
+            <p>El módulo Facturación funciona como organizador. Puede ayudarte a extraer datos de un ticket y a conservar un XML CFDI que ya recibiste, pero Billqo no emite, timbra, cancela, valida ante el SAT ni sustituye el servicio de un PAC o del propio emisor.</p>
+            <p>La lectura automática de imágenes puede contener errores. Eres responsable de revisar la información antes de guardarla y de verificar tus comprobantes cuando esa precisión sea importante.</p>
+          </section>
+
+          <section className="crystal-panel crystal-privacy-public-card">
             <ShieldCheck size={19} />
             <h2>Acceso a Google</h2>
-            <p>La autorización se limita al archivo de Billqo que conectas o creas. Puedes revocar el acceso de Google en cualquier momento; al hacerlo, Billqo deja de sincronizar y tu archivo permanece en tu Drive.</p>
+            <p>La autorización se limita a archivos que Billqo crea o administra con el permiso concedido. Puedes revocar el acceso de Google en cualquier momento; al hacerlo, Billqo deja de sincronizar y tus archivos permanecen en tu Drive.</p>
           </section>
 
           <section className="crystal-panel crystal-privacy-public-card">
