@@ -15,6 +15,12 @@ function findTag(xml: string, localName: string): string | undefined {
   return xml.match(pattern)?.[0];
 }
 
+function findTaxSummaryTag(xml: string): string | undefined {
+  const pattern = /<(?:[A-Za-z_][\w.-]*:)?Impuestos\b[^>]*>/gi;
+  const matches = xml.match(pattern) ?? [];
+  return matches.find((tag) => /\bTotalImpuestos(?:Trasladados|Retenidos)\s*=/.test(tag));
+}
+
 function attributes(tag: string | undefined): Record<string, string> {
   if (!tag) return {};
   const result: Record<string, string> = {};
@@ -51,7 +57,7 @@ export function parseCfdi40Xml(buffer: Buffer): ParsedCfdi {
   const emisor = attributes(findTag(xml, 'Emisor'));
   const receptor = attributes(findTag(xml, 'Receptor'));
   const timbre = attributes(findTag(xml, 'TimbreFiscalDigital'));
-  const impuestos = attributes(findTag(xml, 'Impuestos'));
+  const impuestos = attributes(findTaxSummaryTag(xml));
 
   const version = required(comprobante.Version ?? comprobante.version, 'la versión del comprobante');
   if (version !== '4.0') throw errors.validation('Billqo actualmente importa CFDI versión 4.0.');
