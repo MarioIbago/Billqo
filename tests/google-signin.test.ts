@@ -78,6 +78,7 @@ describe('server-owned Google sign-in', () => {
     mocks.generateAuthUrl.mockReturnValue(providerAuthorizationUrl);
     mocks.createGoogleSignInState.mockResolvedValue('opaque-state');
     mocks.createOAuthState.mockResolvedValue('sheets-state');
+    mocks.getConnection.mockResolvedValue(undefined);
     mocks.getToken.mockResolvedValue({
       tokens: {
         id_token: 'verified-google-id-token',
@@ -150,6 +151,49 @@ describe('server-owned Google sign-in', () => {
       googleSubject: 'google-subject',
       scopes: ['openid', 'email', 'https://www.googleapis.com/auth/drive.file'],
     }));
+    expect(mocks.getConnection).not.toHaveBeenCalled();
+    expect(mocks.createCustomToken).toHaveBeenCalledWith(result.uid, { billqoGoogleIdentity: true });
+  });
+
+  it('reuses the encrypted server grant when Google omits a new refresh token', async () => {
+    mocks.consumeOAuthState.mockResolvedValue({ purpose: 'sign_in', codeVerifier: 'pkce-verifier' });
+    mocks.getToken.mockResolvedValue({
+      tokens: {
+        id_token: 'verified-google-id-token',
+        scope: 'openid email https://www.googleapis.com/auth/drive.file',
+      },
+    });
+    mocks.getConnection.mockResolvedValue({
+      status: 'connected',
+      refreshToken: { ciphertext: 'stored', iv: 'iv', authTag: 'tag', version: 'v1' },
+      scopes: ['openid', 'email', 'https://www.googleapis.com/auth/drive.file'],
+    });
+
+    const result = await finishGoogleSignIn('authorization-code', 'opaque-state');
+
+    expect(result.customToken).toBe('firebase-custom-token');
+    expect(mocks.getConnection).toHaveBeenCalledWith(result.uid);
+    expect(mocks.saveAuthorizedConnection).toHaveBeenCalledWith(result.uid, expect.objectContaining({
+      googleSubject: 'google-subject',
+      refreshToken: undefined,
+    }));
+  });
+
+  it('still signs in when Google omits a refresh token and Billqo has no stored Drive grant', async () => {
+    mocks.consumeOAuthState.mockResolvedValue({ purpose: 'sign_in', codeVerifier: 'pkce-verifier' });
+    mocks.getToken.mockResolvedValue({
+      tokens: {
+        id_token: 'verified-google-id-token',
+        scope: 'openid email https://www.googleapis.com/auth/drive.file',
+      },
+    });
+    mocks.getConnection.mockResolvedValue(undefined);
+
+    const result = await finishGoogleSignIn('authorization-code', 'opaque-state');
+
+    expect(result.customToken).toBe('firebase-custom-token');
+    expect(mocks.getConnection).toHaveBeenCalledWith(result.uid);
+    expect(mocks.saveAuthorizedConnection).not.toHaveBeenCalled();
     expect(mocks.createCustomToken).toHaveBeenCalledWith(result.uid, { billqoGoogleIdentity: true });
   });
 
