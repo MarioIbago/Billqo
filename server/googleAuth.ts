@@ -85,25 +85,24 @@ function isOAuthClientConfigurationError(error: unknown): boolean {
   return reason === 'invalid_client' || reason === 'unauthorized_client';
 }
 
+type GooglePrompt = 'consent' | 'select_account' | 'select_account consent';
+
 function createAuthorizationUrl(
   state: string,
   challenge: string,
-  options: { email?: string; selectAccount?: boolean },
+  options: { email?: string; prompt?: GooglePrompt },
 ): string {
   const config = getGoogleOAuthConfig();
   const client = new google.auth.OAuth2(config.clientId, config.clientSecret, config.redirectUri);
   const authorizationUrl = client.generateAuthUrl({
     access_type: 'offline',
     include_granted_scopes: true,
-    // A consent prompt is deliberate: Sheets needs a durable refresh token,
-    // while select_account prevents a browser's cached account being selected
-    // silently during the initial Billqo sign-in.
-    prompt: options.selectAccount ? 'select_account consent' : 'consent',
     response_type: 'code',
     code_challenge: challenge,
     code_challenge_method: CodeChallengeMethod.S256,
     scope: [...GOOGLE_DATA_SCOPES],
     state,
+    ...(options.prompt ? { prompt: options.prompt } : {}),
     ...(options.email ? { login_hint: options.email } : {}),
   });
   verifyAndLogAuthorizationRequest(authorizationUrl, config);
@@ -201,14 +200,19 @@ async function resolveFirebaseUser(identity: GoogleIdentity): Promise<string> {
 export async function beginGoogleSignIn(): Promise<string> {
   const { verifier, challenge } = createPkcePair();
   const state = await createGoogleSignInState(verifier);
-  return createAuthorizationUrl(state, challenge, { selectAccount: true });
+  // Selecting an account is useful after the 14-day Billqo session expires,
+  // but consent is intentionally not forced. Google will request it only when
+  // the app has not been granted the required scopes yet.
+  return createAuthorizationUrl(state, challenge, { prompt: 'select_account' });
 }
 
 /** Start a Sheets reconnect for a user who already has a Firebase session. */
 export async function beginGoogleAuthorization(uid: string, email?: string): Promise<string> {
   const { verifier, challenge } = createPkcePair();
   const state = await createOAuthState(uid, email, verifier);
-  return createAuthorizationUrl(state, challenge, { email });
+  // This route is an explicit recovery path after a revoked/invalid grant, so
+  // it is the one place where re-consent is deliberate to obtain a durable grant.
+  return createAuthorizationUrl(state, challenge, { email, prompt: 'consent' });
 }
 
 export async function finishGoogleAuthorization(code: string, state: string): Promise<{ uid: string }> {
