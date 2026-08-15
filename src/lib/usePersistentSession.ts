@@ -44,7 +44,7 @@ export function usePersistentSession(): PersistentSessionState {
 
   useEffect(() => {
     let cancelled = false;
-    let unsubscribe = () => undefined;
+    let unsubscribe: () => void = () => undefined;
     let expiringSession = false;
 
     void authPersistenceReady.then(() => {
