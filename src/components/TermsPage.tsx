@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, FileCode2, FileText, ShieldCheck, UserCheck, WalletCards } from 'lucide-react';
+import { ArrowLeft, Bot, FileSpreadsheet, ReceiptText, ShieldCheck, WalletCards } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CuantlyBrand } from './CuantlyBrand';
 
@@ -8,60 +8,56 @@ export const TermsPage: React.FC = () => {
 
   return (
     <div className="crystal-public-page crystal-privacy-page">
-      <div className="crystal-orb crystal-orb-a" aria-hidden="true" />
-      <div className="crystal-orb crystal-orb-b" aria-hidden="true" />
-
       <main className="crystal-privacy-public" aria-labelledby="terms-page-title">
         <header className="crystal-privacy-public-header">
           <CuantlyBrand />
-          <button type="button" className="crystal-back-link" onClick={() => navigate('/auth')}>
+          <button type="button" className="crystal-back-link" onClick={() => navigate('/')}>
             <ArrowLeft size={17} />
-            Iniciar sesión
+            Volver
           </button>
         </header>
 
         <section className="crystal-privacy-public-intro">
-          <span className="crystal-eyebrow">Uso responsable</span>
-          <h1 id="terms-page-title">Términos de uso<br />de Billqo.</h1>
-          <p>Al usar Billqo aceptas estos términos. La aplicación te ayuda a organizar información financiera y fiscal; no sustituye asesoría financiera, fiscal, legal o contable profesional.</p>
+          <span className="crystal-eyebrow">Términos de uso</span>
+          <h1 id="terms-page-title">Cómo funciona<br />Billqo.</h1>
+          <p>Billqo es una herramienta para organizar finanzas personales y comprobantes. Al usarla, aceptas utilizar la aplicación de forma responsable y revisar la información que guardas.</p>
         </section>
 
         <div className="crystal-privacy-public-grid">
           <section className="crystal-panel crystal-privacy-public-card">
-            <UserCheck size={19} />
-            <h2>Tu cuenta</h2>
-            <p>El acceso se realiza con la cuenta de Google que eliges. Eres responsable de proteger tu cuenta de Google y de usar Billqo solo con información sobre la que tengas derecho de acceso.</p>
-          </section>
-
-          <section className="crystal-panel crystal-privacy-public-card">
             <WalletCards size={19} />
-            <h2>Tus datos financieros</h2>
-            <p>Los movimientos, presupuestos y preferencias que registres pertenecen a ti y se guardan en el Google Sheet de tu Drive. Puedes editarlos, exportarlos, desconectar la integración o eliminarlos desde la aplicación.</p>
+            <h2>Organización financiera</h2>
+            <p>Billqo permite registrar y consultar ingresos, gastos, categorías, presupuestos y preferencias. La aplicación muestra análisis basados en los datos que tú registras.</p>
           </section>
 
           <section className="crystal-panel crystal-privacy-public-card">
-            <FileCode2 size={19} />
+            <FileSpreadsheet size={19} />
+            <h2>Tu Google Sheet</h2>
+            <p>Los registros financieros se guardan en el Google Sheet conectado dentro de tu Drive. Eres responsable de conservar el acceso a tu cuenta y de revisar los permisos que otorgas a Billqo.</p>
+          </section>
+
+          <section className="crystal-panel crystal-privacy-public-card">
+            <ReceiptText size={19} />
             <h2>Tickets y CFDI</h2>
-            <p>El módulo Facturación funciona como organizador. Puede ayudarte a extraer datos de un ticket y a conservar un XML CFDI que ya recibiste, pero Billqo no emite, timbra, cancela, valida ante el SAT ni sustituye el servicio de un PAC o del propio emisor.</p>
-            <p>La lectura automática de imágenes puede contener errores. Eres responsable de revisar la información antes de guardarla y de verificar tus comprobantes cuando esa precisión sea importante.</p>
+            <p>El módulo de Facturación sirve para organizar comprobantes y relacionarlos con información fiscal o CFDI que ya exista. Billqo no timbra, emite ni cancela CFDI ante el SAT.</p>
+          </section>
+
+          <section className="crystal-panel crystal-privacy-public-card">
+            <Bot size={19} />
+            <h2>Lectura automática</h2>
+            <p>El escáner con IA puede sugerir datos a partir de una imagen, pero la extracción puede contener errores. Revisa monto, fecha, comercio, categoría y cualquier dato fiscal antes de guardarlo o usarlo para una decisión.</p>
           </section>
 
           <section className="crystal-panel crystal-privacy-public-card">
             <ShieldCheck size={19} />
-            <h2>Acceso a Google</h2>
-            <p>La autorización se limita a archivos que Billqo crea o administra con el permiso concedido. Puedes revocar el acceso de Google en cualquier momento; al hacerlo, Billqo deja de sincronizar y tus archivos permanecen en tu Drive.</p>
-          </section>
-
-          <section className="crystal-panel crystal-privacy-public-card">
-            <FileText size={19} />
-            <h2>Disponibilidad y cambios</h2>
-            <p>Podemos actualizar Billqo o estos términos para mejorar la seguridad y el servicio. Si un cambio afecta de forma importante el uso de tus datos, se reflejará en esta página antes de aplicar.</p>
+            <h2>Disponibilidad</h2>
+            <p>Billqo depende de servicios externos como Google, Firebase, Vercel y el proveedor de IA configurado. Algunas funciones pueden verse temporalmente afectadas si alguno de esos servicios no está disponible.</p>
           </section>
         </div>
 
         <footer className="crystal-privacy-public-footer">
-          <button type="button" className="crystal-legal-link" onClick={() => navigate('/privacy')}>Leer privacidad y control de datos</button>
-          <button type="button" className="crystal-primary-button" onClick={() => navigate('/auth')}>Continuar a Billqo</button>
+          <button type="button" className="crystal-legal-link" onClick={() => navigate('/privacy')}>Ver privacidad</button>
+          <button type="button" className="crystal-primary-button" onClick={() => navigate('/auth')}>Entrar a Billqo</button>
         </footer>
       </main>
     </div>
