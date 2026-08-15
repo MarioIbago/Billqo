@@ -68,7 +68,7 @@ vi.mock('../server/firebaseAdmin', () => ({
   }),
 }));
 
-import { beginGoogleSignIn, finishGoogleSignIn } from '../server/googleAuth';
+import { beginGoogleAuthorization, beginGoogleSignIn, finishGoogleSignIn } from '../server/googleAuth';
 
 const providerAuthorizationUrl = 'https://accounts.google.com/o/oauth2/v2/auth?redirect_uri=https%3A%2F%2Fapp.example%2Fapi%2Fgoogle%2Foauth%2Fcallback';
 
@@ -77,6 +77,7 @@ describe('server-owned Google sign-in', () => {
     vi.clearAllMocks();
     mocks.generateAuthUrl.mockReturnValue(providerAuthorizationUrl);
     mocks.createGoogleSignInState.mockResolvedValue('opaque-state');
+    mocks.createOAuthState.mockResolvedValue('sheets-state');
     mocks.getToken.mockResolvedValue({
       tokens: {
         id_token: 'verified-google-id-token',
@@ -98,7 +99,7 @@ describe('server-owned Google sign-in', () => {
     mocks.createCustomToken.mockResolvedValue('firebase-custom-token');
   });
 
-  it('starts a PKCE, account-selecting Google authorization without using Firebase redirect helpers', async () => {
+  it('starts PKCE sign-in without forcing the Google consent screen again', async () => {
     const authorizationUrl = await beginGoogleSignIn();
 
     expect(authorizationUrl).toBe(providerAuthorizationUrl);
@@ -107,13 +108,28 @@ describe('server-owned Google sign-in', () => {
     const options = mocks.generateAuthUrl.mock.calls[0]?.[0] as Record<string, unknown>;
     expect(options).toMatchObject({
       access_type: 'offline',
-      prompt: 'select_account consent',
+      include_granted_scopes: true,
+      prompt: 'select_account',
       response_type: 'code',
       code_challenge_method: 'S256',
       state: 'opaque-state',
     });
     expect(options.scope).toEqual(['openid', 'email', 'https://www.googleapis.com/auth/drive.file']);
     expect(options).not.toHaveProperty('login_hint');
+  });
+
+  it('forces consent only on an explicit Google Sheets reconnect', async () => {
+    await beginGoogleAuthorization('existing-user', 'person@example.com');
+
+    expect(mocks.createOAuthState).toHaveBeenCalledWith('existing-user', 'person@example.com', expect.any(String));
+    const options = mocks.generateAuthUrl.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(options).toMatchObject({
+      access_type: 'offline',
+      include_granted_scopes: true,
+      prompt: 'consent',
+      login_hint: 'person@example.com',
+      state: 'sheets-state',
+    });
   });
 
   it('accepts only a verified Google identity, saves its Drive grant, and mints the marked Firebase session', async () => {
