@@ -57,7 +57,7 @@ export function parseCfdi40Xml(buffer: Buffer): ParsedCfdi {
   if (version !== '4.0') throw errors.validation('Billqo actualmente importa CFDI versión 4.0.');
 
   const uuid = required(timbre.UUID ?? timbre.Uuid, 'el UUID del Timbre Fiscal Digital').toUpperCase();
-  if (!/^[0-9A-F]{8}-[0-9A-F]{4}-[1-5][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i.test(uuid)) {
+  if (!/^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i.test(uuid)) {
     throw errors.validation('El UUID del CFDI no tiene un formato válido.');
   }
 
