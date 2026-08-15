@@ -85,6 +85,7 @@ export function Dashboard() {
   const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const [connectionChecked, setConnectionChecked] = useState(false);
   const [snapshot, setSnapshot] = useState<FinancialSnapshot>();
   const [connection, setConnection] = useState<GoogleConnection>({ status: 'not_connected' });
   const [loading, setLoading] = useState(false);
@@ -98,7 +99,13 @@ export function Dashboard() {
   useEffect(() => onAuthStateChanged(auth, (nextUser) => {
     setUser(nextUser);
     setAuthReady(true);
-    if (!nextUser) navigate('/auth', { replace: true });
+    if (nextUser) {
+      // Do not render the disconnected gate until the real Sheets state has
+      // been checked. The default connection value is only a placeholder.
+      setConnectionChecked(false);
+    } else {
+      navigate('/auth', { replace: true });
+    }
   }), [navigate]);
 
   const refresh = useCallback(async () => {
@@ -127,6 +134,7 @@ export function Dashboard() {
       setSnapshot(undefined);
     } finally {
       setLoading(false);
+      setConnectionChecked(true);
     }
   }, [user]);
 
@@ -248,7 +256,7 @@ export function Dashboard() {
 
   if (!authReady) return <LoadingScreen message="Comprobando tu sesion..." />;
   if (!user) return null;
-  if (loading && !snapshot) return <LoadingScreen message="Conectando con Google Sheets..." />;
+  if (!connectionChecked || (loading && !snapshot)) return <LoadingScreen message="Conectando con Google Sheets..." />;
   if (!snapshot || connection.status !== 'connected') {
     return <StorageGateScreen connection={connection} message={error ?? oauthResultMessage} onConnect={() => void connectGoogle()} onRetry={() => void refresh()} />;
   }
