@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_TRANSACTION_TEXT_LENGTH, transactionPayloadIssue } from '../server/inputHardening';
+import {
+  MAX_TRANSACTION_TEXT_LENGTH,
+  preferencePayloadIssue,
+  transactionPayloadIssue,
+} from '../server/inputHardening';
 
 function transaction(overrides: Record<string, unknown> = {}) {
   return {
@@ -42,5 +46,29 @@ describe('transaction input hardening', () => {
 
   it('rejects malformed dates before they reach the Sheet writer', () => {
     expect(transactionPayloadIssue(transaction({ date: '2026-99-99' }))).toMatch(/fecha no tiene un formato válido/i);
+  });
+});
+
+describe('preference input hardening', () => {
+  const version = '2026-08-15T18:00:00.000Z';
+
+  it('accepts typed financial preferences', () => {
+    expect(preferencePayloadIssue({
+      expectedUpdatedAt: version,
+      currency: 'MXN',
+      dateFormat: 'DD/MM/YYYY',
+      timezone: 'America/Mexico_City',
+      monthlyBudget: 5000,
+    })).toBeUndefined();
+  });
+
+  it('rejects arbitrary currency, timezone and budget values', () => {
+    expect(preferencePayloadIssue({ expectedUpdatedAt: version, currency: '<script>' })).toMatch(/moneda/i);
+    expect(preferencePayloadIssue({ expectedUpdatedAt: version, timezone: 'not/a-zone' })).toMatch(/zona horaria/i);
+    expect(preferencePayloadIssue({ expectedUpdatedAt: version, monthlyBudget: '5000' })).toMatch(/presupuesto mensual/i);
+  });
+
+  it('rejects unknown configuration fields', () => {
+    expect(preferencePayloadIssue({ expectedUpdatedAt: version, injected: 'value' })).toMatch(/campos no permitidos/i);
   });
 });
