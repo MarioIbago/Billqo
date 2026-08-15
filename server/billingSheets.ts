@@ -38,6 +38,12 @@ const CFDI_HEADERS = [
   'impuestos_retenidos', 'xml_file_id', 'xml_url', 'pdf_file_id', 'pdf_url', 'created_at',
 ] as const;
 
+const BILLING_SHEET_DEFINITIONS = [
+  { title: SHEETS.tickets, headers: TICKET_HEADERS },
+  { title: SHEETS.fiscal, headers: FISCAL_HEADERS },
+  { title: SHEETS.cfdi, headers: CFDI_HEADERS },
+] as const;
+
 type Cell = string | number | boolean | null | undefined;
 type Row = Cell[];
 
@@ -117,13 +123,30 @@ async function ensureHeader(client: GoogleOAuthClient, spreadsheetId: string, ti
 
 async function ensureBillingStructure(client: GoogleOAuthClient, spreadsheetId: string): Promise<void> {
   const sheets = getSheets(client);
-  const current = await sheets.spreadsheets.get({ spreadsheetId, fields: 'sheets.properties(sheetId,title)' });
+  const current = await sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: 'sheets.properties(sheetId,title,gridProperties(columnCount))',
+  });
   const existing = current.data.sheets?.map((sheet) => sheet.properties).filter(Boolean) ?? [];
-  const titles = new Set(existing.map((property) => property?.title ?? ''));
   const requests: Array<Record<string, unknown>> = [];
-  for (const title of Object.values(SHEETS)) {
-    if (!titles.has(title)) requests.push({ addSheet: { properties: { title } } });
+
+  for (const definition of BILLING_SHEET_DEFINITIONS) {
+    const property = existing.find((item) => item?.title === definition.title);
+    const requiredColumns = Math.max(26, definition.headers.length);
+    if (!property) {
+      requests.push({ addSheet: { properties: { title: definition.title, gridProperties: { columnCount: requiredColumns } } } });
+      continue;
+    }
+    if (property.sheetId !== undefined && (property.gridProperties?.columnCount ?? 0) < requiredColumns) {
+      requests.push({
+        updateSheetProperties: {
+          properties: { sheetId: property.sheetId, gridProperties: { columnCount: requiredColumns } },
+          fields: 'gridProperties.columnCount',
+        },
+      });
+    }
   }
+
   if (requests.length > 0) await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests } });
 
   await ensureHeader(client, spreadsheetId, SHEETS.tickets, TICKET_HEADERS);
