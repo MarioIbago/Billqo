@@ -17,6 +17,8 @@ function jpegBuffer(): Buffer {
 
 function validExpense(overrides: Record<string, unknown> = {}) {
   return {
+    documentType: 'ticket',
+    isFinancialDocument: true,
     type: 'expense',
     merchant: 'Comercio',
     description: 'Compra',
@@ -51,15 +53,35 @@ describe('receipt scanner', () => {
     expect(() => assertReceiptImage(image, 'image/png')).toThrow();
   });
 
+  it('rejects images that are not financial receipts, tickets, invoices or payment proofs', () => {
+    expect(() => parseReceiptModelResult(JSON.stringify(validExpense({
+      documentType: 'other',
+      isFinancialDocument: false,
+      merchant: null,
+      description: null,
+      amount: null,
+      currency: null,
+      date: null,
+      paymentMethod: null,
+      category: null,
+      costType: null,
+      fixedVariable: null,
+      necessity: null,
+      influence: null,
+      confidence: 0.99,
+    })), ['Comida'])).toThrow(/ticket, recibo, factura o comprobante de pago/i);
+  });
+
   it('drops a category that is not in the allowed Billqo categories', () => {
     const result = parseReceiptModelResult(JSON.stringify(validExpense({ category: 'Inventada' })), ['Comida', 'Transporte']);
     expect(result.category).toBeNull();
     expect(result.warnings).toContain('La categoría detectada requiere selección manual.');
   });
 
-  it('rejects malformed structured output before it reaches the form', () => {
+  it('rejects malformed or oversized structured output before it reaches the form', () => {
     expect(() => parseReceiptModelResult('{not-json', ['Comida'])).toThrow();
     expect(() => parseReceiptModelResult(JSON.stringify(validExpense({ amount: -1 })), ['Comida'])).toThrow();
+    expect(() => parseReceiptModelResult(JSON.stringify(validExpense({ description: 'x'.repeat(201) })), ['Comida'])).toThrow();
   });
 
   it('keeps the model system prompt free of examples', () => {
@@ -93,6 +115,39 @@ describe('receipt scanner', () => {
     expect(body.models).toBeUndefined();
     expect(body.provider).toEqual({ require_parameters: true, data_collection: 'deny' });
     expect(body.response_format.type).toBe('json_schema');
+    expect(body.response_format.json_schema.schema.required).toContain('documentType');
+    expect(body.response_format.json_schema.schema.required).toContain('isFinancialDocument');
+  });
+
+  it('does not spend a fallback call when the image is classified as non-financial', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      model: 'some/free-model',
+      choices: [{ message: { content: JSON.stringify(validExpense({
+        documentType: 'other',
+        isFinancialDocument: false,
+        merchant: null,
+        description: null,
+        amount: null,
+        currency: null,
+        date: null,
+        paymentMethod: null,
+        category: null,
+        costType: null,
+        fixedVariable: null,
+        necessity: null,
+        influence: null,
+      })) } }],
+    }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(scanReceiptImage({
+      image: jpegBuffer(),
+      mimeType: 'image/jpeg',
+      allowedCategories: ['Comida'],
+    })).rejects.toMatchObject({ status: 400, code: 'VALIDATION_FAILED' });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('uses paid cheap models only if the free response cannot be validated', async () => {
