@@ -3,6 +3,7 @@ import type { ApiError } from '../src/types';
 import { requireFirebaseAuth } from './auth';
 import baseApp from './app';
 import { AppError, toApiError } from './errors';
+import { hardenTransactionInput } from './inputHardening';
 import { limitAuthenticatedApi, limitInboundApi } from './rateLimit';
 import receiptRouter from './receiptRoutes';
 
@@ -44,6 +45,12 @@ const receiptErrorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
 };
 
 app.use('/api/receipts/scan', receiptErrorHandler);
+
+// Parse only the small transaction payload here so hostile or oversized input is
+// rejected before it reaches the larger base application contract. Express 4's
+// JSON parser marks the body as parsed, so the base app will not read it twice.
+app.use('/api/transactions', express.json({ limit: '32kb' }), hardenTransactionInput);
+
 app.use(baseApp);
 
 export default app;
