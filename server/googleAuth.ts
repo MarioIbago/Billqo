@@ -155,6 +155,22 @@ async function saveGoogleConnection(uid: string, authorization: GoogleAuthorizat
   });
 }
 
+async function saveGoogleConnectionIfDurable(uid: string, authorization: GoogleAuthorizationResult): Promise<boolean> {
+  if (authorization.refreshToken) {
+    await saveGoogleConnection(uid, authorization);
+    return true;
+  }
+
+  // Google commonly omits refresh_token when the user has already granted the
+  // same scopes. Reuse Billqo's encrypted server-side token when present. If it
+  // is missing too, sign-in still succeeds and the app will offer the explicit
+  // Sheets/Drive reconnect flow, which is the only flow that forces consent.
+  const existing = await getConnection(uid);
+  if (!existing?.refreshToken) return false;
+  await saveGoogleConnection(uid, authorization);
+  return true;
+}
+
 function isFirebaseError(error: unknown, code: string): boolean {
   return Boolean(error && typeof error === 'object' && (error as { code?: unknown }).code === code);
 }
@@ -235,7 +251,7 @@ export async function finishGoogleSignIn(code: string, state: string): Promise<{
   if (stateRecord.purpose !== 'sign_in') throw errors.reauthorization();
   const authorization = await exchangeGoogleAuthorization(code, stateRecord);
   const uid = await resolveFirebaseUser(authorization.identity);
-  await saveGoogleConnection(uid, authorization);
+  await saveGoogleConnectionIfDurable(uid, authorization);
   const customToken = await getAdminAuth().createCustomToken(uid, { billqoGoogleIdentity: true });
   return { uid, customToken };
 }
