@@ -167,11 +167,22 @@ export async function scanBillingTicketImage(image: Buffer, mimeType: string): P
   const result = scanSchema.safeParse(parsed);
   if (!result.success) throw errors.ai('La IA no devolvió una lectura válida del ticket.');
 
+  const data = result.data;
   return {
-    ...result.data,
-    issuerRfc: result.data.issuerRfc?.toUpperCase() ?? null,
-    currency: result.data.currency ?? 'MXN',
-    identifiers: uniqueIdentifiers(result.data.identifiers),
-    warnings: [...new Set(result.data.warnings)].slice(0, 8),
+    merchant: data.merchant ?? null,
+    issuerRfc: data.issuerRfc?.toUpperCase() ?? null,
+    date: data.date ?? null,
+    time: data.time ?? null,
+    total: data.total ?? null,
+    subtotal: data.subtotal ?? null,
+    iva: data.iva ?? null,
+    currency: data.currency ?? 'MXN',
+    paymentMethod: data.paymentMethod ?? null,
+    cardLast4: data.cardLast4 ?? null,
+    identifiers: uniqueIdentifiers(data.identifiers ?? []),
+    invoiceUrl: data.invoiceUrl ?? null,
+    qrData: data.qrData ?? null,
+    confidence: data.confidence ?? 0,
+    warnings: [...new Set(data.warnings ?? [])].slice(0, 8),
   };
 }
