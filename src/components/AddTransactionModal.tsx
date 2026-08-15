@@ -1,5 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Calendar, Camera, ChevronDown, DollarSign, FolderOpen, Images, LoaderCircle, Upload, X } from 'lucide-react';
+import {
+  Calendar,
+  Camera,
+  ChevronDown,
+  DollarSign,
+  FolderOpen,
+  Images,
+  LoaderCircle,
+  SlidersHorizontal,
+  Upload,
+  X,
+} from 'lucide-react';
 import type {
   Category,
   CostType,
@@ -24,9 +35,10 @@ const paymentMethods: PaymentMethod[] = ['Efectivo', 'Tarjeta Débito', 'Tarjeta
 const expenseCostTypes: CostType[] = ['Fijo', 'Variable', 'Discrecional', 'Operativo', 'Hormiga'];
 const mobileImageFileTypes = '.jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif';
 
-const labelClass = 'mb-1.5 block text-[13px] font-semibold tracking-[0.01em] text-white/60';
-const controlClass = 'h-12 w-full min-w-0 max-w-full rounded-2xl border border-white/[0.11] bg-white/[0.035] px-3.5 text-[16px] text-white outline-none transition focus:border-white/25 focus:bg-white/[0.055] disabled:opacity-50';
-const selectClass = `${controlClass} appearance-none pr-10`;
+const labelClass = 'mb-1.5 block text-[12px] font-semibold tracking-[0.01em] text-white/55';
+const glassControl = 'border border-white/[0.13] bg-white/[0.065] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-2xl';
+const controlClass = `h-11 w-full min-w-0 max-w-full rounded-[15px] ${glassControl} px-3 text-[16px] text-white outline-none transition focus:border-white/25 focus:bg-white/[0.095] disabled:opacity-50`;
+const selectClass = `${controlClass} appearance-none pr-9`;
 
 function normalizeCategory(value: string): string {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase('es-MX');
@@ -51,6 +63,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [receiptSourcesOpen, setReceiptSourcesOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [scanMessage, setScanMessage] = useState<string>();
   const [formError, setFormError] = useState<string>();
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -188,57 +201,65 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
         {placeholder && <option value="" disabled>{placeholder}</option>}
         {options.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
       </select>
-      <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-white/45" size={17} />
+      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/40" size={16} />
     </div>
   );
 
+  const advancedSummary = type === 'expense'
+    ? `${fixedVariable} · ${necessity} · ${costType} · impulso ${influence}`
+    : notes.trim() ? 'Con notas' : 'Notas y detalles opcionales';
+
   return (
     <div
-      className="fixed inset-0 z-[80] flex min-w-0 items-end justify-center overflow-hidden bg-black/75 backdrop-blur-md sm:items-center sm:p-4"
+      className="fixed inset-0 z-[80] flex min-w-0 items-end justify-center overflow-hidden bg-black/45 px-3 pb-[max(10px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-[14px] sm:items-center sm:p-5"
       role="presentation"
       onMouseDown={onClose}
     >
       <section
-        className="relative flex w-full min-w-0 max-w-[430px] flex-col overflow-hidden rounded-t-[28px] border border-white/[0.10] bg-[#0b0b0c] text-white shadow-[0_-20px_60px_rgba(0,0,0,0.55)] sm:max-h-[88dvh] sm:rounded-[28px]"
-        style={{ maxHeight: 'min(94dvh, 860px)' }}
+        className="relative flex w-full min-w-0 max-w-[410px] flex-col overflow-hidden rounded-[28px] border border-white/[0.16] text-white shadow-[0_24px_80px_rgba(0,0,0,0.48),inset_0_1px_0_rgba(255,255,255,0.10)] backdrop-blur-[30px] backdrop-saturate-[175%]"
+        style={{
+          maxHeight: 'min(86dvh, 760px)',
+          background: 'linear-gradient(180deg, rgba(28,28,30,0.78) 0%, rgba(9,9,10,0.70) 100%)',
+          WebkitBackdropFilter: 'blur(30px) saturate(175%)',
+        }}
         role="dialog"
         aria-modal="true"
         aria-labelledby="new-transaction-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <header className="flex flex-none items-start justify-between gap-4 border-b border-white/[0.07] bg-[#0b0b0c]/95 px-4 pb-3 pt-4 backdrop-blur-xl sm:px-5">
+        <header className="flex flex-none items-start justify-between gap-3 border-b border-white/[0.08] bg-white/[0.025] px-4 pb-3 pt-3.5 backdrop-blur-2xl">
           <div className="min-w-0">
-            <span className="block truncate text-[11px] font-bold uppercase tracking-[0.18em] text-white/45">
-              {transaction ? 'Edición guardada en Google Sheets' : 'Registro rápido'}
+            <span className="block truncate text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
+              {transaction ? 'Editar en Google Sheets' : 'Registro rápido'}
             </span>
-            <h2 id="new-transaction-title" className="mt-1.5 text-[24px] font-semibold leading-tight tracking-[-0.03em] text-white">
+            <h2 id="new-transaction-title" className="mt-1 text-[22px] font-semibold leading-tight tracking-[-0.03em] text-white">
               {transaction ? 'Editar movimiento' : 'Nuevo movimiento'}
             </h2>
           </div>
           <button
             type="button"
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-white/[0.10] bg-white/[0.04] text-white/70 transition active:scale-95"
+            className={`grid h-9 w-9 shrink-0 place-items-center rounded-[14px] ${glassControl} text-white/65 transition active:scale-95`}
             onClick={onClose}
             aria-label="Cerrar"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </header>
 
         <form className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => void submit(event)}>
-          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 pb-4 pt-3 sm:px-5">
-            <div className="flex min-w-0 flex-col gap-3.5">
-              <div className="grid h-12 grid-cols-2 gap-1 rounded-2xl border border-white/[0.10] bg-white/[0.035] p-1">
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-3.5 pb-3 pt-3 sm:px-4">
+            <div className="flex min-w-0 flex-col gap-3">
+              <div className={`grid h-11 grid-cols-2 gap-1 rounded-[16px] p-1 ${glassControl}`}>
                 <button
                   type="button"
-                  className={`min-w-0 rounded-xl text-[15px] font-semibold transition active:scale-[0.99] ${type === 'expense' ? 'bg-[#d25056] text-white shadow-[0_6px_20px_rgba(210,80,86,0.22)]' : 'text-white/55'}`}
+                  className={`min-w-0 rounded-[12px] text-[14px] font-semibold transition active:scale-[0.99] ${type === 'expense' ? 'bg-[#cf545a]/90 text-white shadow-[0_6px_20px_rgba(207,84,90,0.20)] backdrop-blur-xl' : 'text-white/50'}`}
                   onClick={() => changeType('expense')}
                 >
                   Gasto
                 </button>
                 <button
                   type="button"
-                  className={`min-w-0 rounded-xl text-[15px] font-semibold transition active:scale-[0.99] ${type === 'income' ? 'bg-[#2d9b69] text-white shadow-[0_6px_20px_rgba(45,155,105,0.22)]' : 'text-white/55'}`}
+                  className={`min-w-0 rounded-[12px] text-[14px] font-semibold transition active:scale-[0.99] ${type === 'income' ? 'bg-[#35986d]/90 text-white shadow-[0_6px_20px_rgba(53,152,109,0.20)] backdrop-blur-xl' : 'text-white/50'}`}
                   onClick={() => changeType('income')}
                 >
                   Ingreso
@@ -253,59 +274,50 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
 
                   <button
                     type="button"
-                    className="flex h-12 min-w-0 items-center justify-center gap-2.5 rounded-2xl border border-white/[0.13] bg-white/[0.055] px-3 text-[15px] font-semibold text-white/75 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-xl transition active:scale-[0.99] disabled:opacity-50"
+                    className={`flex h-11 min-w-0 items-center gap-2.5 rounded-[15px] px-3 text-[14px] font-semibold text-white/70 transition active:scale-[0.99] disabled:opacity-50 ${glassControl}`}
                     disabled={scanning || saving}
                     onClick={() => setReceiptSourcesOpen((open) => !open)}
                     aria-expanded={receiptSourcesOpen}
                   >
-                    {scanning ? <LoaderCircle className="shrink-0 animate-spin" size={18} /> : <Upload className="shrink-0" size={18} />}
+                    {scanning ? <LoaderCircle className="shrink-0 animate-spin" size={17} /> : <Upload className="shrink-0" size={17} />}
                     <span className="truncate">{scanning ? 'Analizando comprobante…' : 'Agregar comprobante'}</span>
-                    {!scanning && <ChevronDown className={`ml-auto shrink-0 transition-transform ${receiptSourcesOpen ? 'rotate-180' : ''}`} size={16} />}
+                    {!scanning && <ChevronDown className={`ml-auto shrink-0 transition-transform ${receiptSourcesOpen ? 'rotate-180' : ''}`} size={15} />}
                   </button>
 
                   {receiptSourcesOpen && !scanning && (
-                    <div
-                      className="grid grid-cols-3 gap-2 rounded-[22px] border border-white/[0.14] bg-white/[0.065] p-2.5 shadow-[0_14px_40px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-2xl"
-                      role="group"
-                      aria-label="Origen del comprobante"
-                    >
-                      <button
-                        type="button"
-                        className="flex min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border border-white/[0.10] bg-white/[0.045] px-2 py-3 text-white/75 transition active:scale-95"
-                        onClick={() => cameraInputRef.current?.click()}
-                      >
-                        <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/[0.08]"><Camera size={19} /></span>
-                        <span className="text-[13px] font-semibold">Cámara</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="flex min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border border-white/[0.10] bg-white/[0.045] px-2 py-3 text-white/75 transition active:scale-95"
-                        onClick={() => photosInputRef.current?.click()}
-                      >
-                        <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/[0.08]"><Images size={19} /></span>
-                        <span className="text-[13px] font-semibold">Fotos</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="flex min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border border-white/[0.10] bg-white/[0.045] px-2 py-3 text-white/75 transition active:scale-95"
-                        onClick={() => filesInputRef.current?.click()}
-                      >
-                        <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/[0.08]"><FolderOpen size={19} /></span>
-                        <span className="text-[13px] font-semibold">Archivos</span>
-                      </button>
+                    <div className={`grid grid-cols-3 gap-1.5 rounded-[20px] p-2 ${glassControl}`} role="group" aria-label="Origen del comprobante">
+                      {[
+                        { label: 'Cámara', icon: Camera, onClick: () => cameraInputRef.current?.click() },
+                        { label: 'Fotos', icon: Images, onClick: () => photosInputRef.current?.click() },
+                        { label: 'Archivos', icon: FolderOpen, onClick: () => filesInputRef.current?.click() },
+                      ].map(({ label, icon: Icon, onClick }) => (
+                        <button
+                          type="button"
+                          key={label}
+                          className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-[14px] border border-white/[0.08] bg-white/[0.035] px-1.5 py-2.5 text-white/70 transition active:scale-95"
+                          onClick={onClick}
+                        >
+                          <Icon size={18} />
+                          <span className="text-[11px] font-semibold">{label}</span>
+                        </button>
+                      ))}
                     </div>
                   )}
 
-                  {scanMessage && <p className="m-0 rounded-xl border border-white/[0.08] bg-white/[0.025] px-3 py-2 text-[12px] leading-5 text-white/55" role="status">{scanMessage}</p>}
+                  {scanMessage && (
+                    <p className="m-0 rounded-[14px] border border-white/[0.09] bg-white/[0.045] px-3 py-2 text-[11px] leading-4.5 text-white/55 backdrop-blur-xl" role="status">
+                      {scanMessage}
+                    </p>
+                  )}
                 </>
               )}
 
               <label className="block min-w-0">
                 <span className={labelClass}>Monto</span>
-                <div className="flex h-[58px] min-w-0 items-center rounded-2xl border border-white/[0.12] bg-white/[0.04] px-3.5 transition focus-within:border-white/25 focus-within:bg-white/[0.055]">
-                  <DollarSign className="mr-2 shrink-0 text-white/40" size={20} />
+                <div className={`flex h-[54px] min-w-0 items-center rounded-[17px] px-3 transition focus-within:border-white/25 focus-within:bg-white/[0.10] ${glassControl}`}>
+                  <DollarSign className="mr-1.5 shrink-0 text-white/35" size={19} />
                   <input
-                    className="h-full min-w-0 flex-1 bg-transparent text-[25px] font-medium tracking-[-0.02em] text-white outline-none placeholder:text-white/25"
+                    className="h-full min-w-0 flex-1 bg-transparent text-[24px] font-medium tracking-[-0.02em] text-white outline-none placeholder:text-white/20"
                     inputMode="decimal"
                     value={amount}
                     onChange={(event) => setAmount(event.target.value)}
@@ -326,7 +338,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
                 />
               </label>
 
-              <div className="grid min-w-0 grid-cols-2 gap-3">
+              <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(132px,0.82fr)] gap-2.5 max-[350px]:grid-cols-1">
                 <label className="block min-w-0">
                   <span className={labelClass}>Categoría</span>
                   {renderSelect(
@@ -339,8 +351,8 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
 
                 <label className="block min-w-0">
                   <span className={labelClass}>Fecha</span>
-                  <div className="flex h-12 min-w-0 items-center rounded-2xl border border-white/[0.11] bg-white/[0.035] px-3 transition focus-within:border-white/25">
-                    <Calendar className="mr-2 shrink-0 text-white/40" size={16} />
+                  <div className={`flex h-11 min-w-0 items-center rounded-[15px] px-2.5 transition focus-within:border-white/25 ${glassControl}`}>
+                    <Calendar className="mr-1.5 shrink-0 text-white/35" size={15} />
                     <input
                       className="h-full min-w-0 flex-1 appearance-none bg-transparent text-[16px] text-white outline-none [color-scheme:dark]"
                       type="date"
@@ -360,71 +372,93 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
                 )}
               </label>
 
-              {type === 'expense' && (
-                <>
-                  <div className="grid min-w-0 grid-cols-2 gap-3">
+              <button
+                type="button"
+                className={`flex min-h-12 min-w-0 items-center gap-2.5 rounded-[17px] px-3 py-2.5 text-left transition active:scale-[0.995] ${glassControl}`}
+                onClick={() => setAdvancedOpen((open) => !open)}
+                aria-expanded={advancedOpen}
+              >
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[12px] bg-white/[0.07] text-white/55">
+                  <SlidersHorizontal size={16} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <strong className="block text-[13px] font-semibold text-white/75">Más configuración</strong>
+                  <span className="block truncate text-[10.5px] text-white/38">{advancedSummary}</span>
+                </span>
+                <ChevronDown className={`shrink-0 text-white/40 transition-transform ${advancedOpen ? 'rotate-180' : ''}`} size={16} />
+              </button>
+
+              {advancedOpen && (
+                <div className={`min-w-0 rounded-[20px] p-3 ${glassControl}`}>
+                  <div className="flex min-w-0 flex-col gap-3">
+                    {type === 'expense' && (
+                      <>
+                        <div className="grid min-w-0 grid-cols-2 gap-2.5 max-[350px]:grid-cols-1">
+                          <label className="block min-w-0">
+                            <span className={labelClass}>Tipo</span>
+                            {renderSelect(
+                              fixedVariable,
+                              (value) => setFixedVariable(value as FixedVariable),
+                              ['Fijo', 'Variable'].map((value) => ({ value, label: value })),
+                            )}
+                          </label>
+                          <label className="block min-w-0">
+                            <span className={labelClass}>Necesidad</span>
+                            {renderSelect(
+                              necessity,
+                              (value) => setNecessity(value as Necessity),
+                              ['Necesario', 'Innecesario'].map((value) => ({ value, label: value })),
+                            )}
+                          </label>
+                        </div>
+
+                        <label className="block min-w-0">
+                          <span className={labelClass}>Clasificación</span>
+                          {renderSelect(
+                            costType,
+                            (value) => setCostType(value as CostType),
+                            expenseCostTypes.map((value) => ({ value, label: value })),
+                          )}
+                        </label>
+
+                        <fieldset className="min-w-0 rounded-[16px] border border-white/[0.08] bg-black/[0.08] p-2.5">
+                          <legend className="px-1 text-[11px] font-semibold text-white/50">Influencia del impulso</legend>
+                          <div className="mb-2 flex items-center justify-between text-[9.5px] font-medium text-white/30">
+                            <span>Planeado</span>
+                            <span>Espontáneo</span>
+                          </div>
+                          <div className="grid min-w-0 grid-cols-5 gap-1.5">
+                            {([1, 2, 3, 4, 5] as const).map((value) => (
+                              <button
+                                type="button"
+                                key={value}
+                                className={`h-9 min-w-0 rounded-[11px] border text-[14px] font-semibold transition active:scale-95 ${influence === value ? 'border-white/80 bg-white/90 text-black shadow-[0_5px_16px_rgba(255,255,255,0.09)]' : 'border-white/[0.08] bg-white/[0.025] text-white/45'}`}
+                                onClick={() => setInfluence(value)}
+                              >
+                                {value}
+                              </button>
+                            ))}
+                          </div>
+                        </fieldset>
+                      </>
+                    )}
+
                     <label className="block min-w-0">
-                      <span className={labelClass}>Tipo</span>
-                      {renderSelect(
-                        fixedVariable,
-                        (value) => setFixedVariable(value as FixedVariable),
-                        ['Fijo', 'Variable'].map((value) => ({ value, label: value })),
-                      )}
-                    </label>
-                    <label className="block min-w-0">
-                      <span className={labelClass}>Necesidad</span>
-                      {renderSelect(
-                        necessity,
-                        (value) => setNecessity(value as Necessity),
-                        ['Necesario', 'Innecesario'].map((value) => ({ value, label: value })),
-                      )}
+                      <span className={labelClass}>Notas <em className="font-normal not-italic text-white/28">opcional</em></span>
+                      <textarea
+                        className={`min-h-[66px] w-full min-w-0 max-w-full resize-none rounded-[15px] px-3 py-2.5 text-[16px] leading-5 text-white outline-none transition focus:border-white/25 focus:bg-white/[0.095] ${glassControl}`}
+                        value={notes}
+                        onChange={(event) => setNotes(event.target.value)}
+                        rows={2}
+                        maxLength={2000}
+                      />
                     </label>
                   </div>
-
-                  <label className="block min-w-0">
-                    <span className={labelClass}>Clasificación</span>
-                    {renderSelect(
-                      costType,
-                      (value) => setCostType(value as CostType),
-                      expenseCostTypes.map((value) => ({ value, label: value })),
-                    )}
-                  </label>
-
-                  <fieldset className="min-w-0 rounded-2xl border border-white/[0.10] bg-white/[0.025] p-3.5">
-                    <legend className="px-1 text-[13px] font-semibold text-white/60">Influencia del impulso</legend>
-                    <div className="mb-2.5 flex items-center justify-between text-[11px] font-medium text-white/35">
-                      <span>Planeado</span>
-                      <span>Espontáneo</span>
-                    </div>
-                    <div className="grid min-w-0 grid-cols-5 gap-2">
-                      {([1, 2, 3, 4, 5] as const).map((value) => (
-                        <button
-                          type="button"
-                          key={value}
-                          className={`h-11 min-w-0 rounded-xl border text-[16px] font-semibold transition active:scale-95 ${influence === value ? 'border-white bg-white text-black shadow-[0_5px_18px_rgba(255,255,255,0.12)]' : 'border-white/[0.09] bg-transparent text-white/50'}`}
-                          onClick={() => setInfluence(value)}
-                        >
-                          {value}
-                        </button>
-                      ))}
-                    </div>
-                  </fieldset>
-                </>
+                </div>
               )}
 
-              <label className="block min-w-0">
-                <span className={labelClass}>Notas <em className="font-normal not-italic text-white/30">opcional</em></span>
-                <textarea
-                  className="min-h-[76px] w-full min-w-0 max-w-full resize-none rounded-2xl border border-white/[0.11] bg-white/[0.035] px-3.5 py-3 text-[16px] leading-5 text-white outline-none transition focus:border-white/25 focus:bg-white/[0.055]"
-                  value={notes}
-                  onChange={(event) => setNotes(event.target.value)}
-                  rows={2}
-                  maxLength={2000}
-                />
-              </label>
-
               {formError && (
-                <div className="rounded-2xl border border-red-400/20 bg-red-400/[0.08] px-3.5 py-3 text-[13px] leading-5 text-red-100" role="alert">
+                <div className="rounded-[15px] border border-red-400/20 bg-red-400/[0.08] px-3 py-2.5 text-[12px] leading-4.5 text-red-100 backdrop-blur-xl" role="alert">
                   {formError}
                 </div>
               )}
@@ -432,18 +466,18 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
           </div>
 
           <footer
-            className="flex flex-none gap-2.5 border-t border-white/[0.08] bg-[#0b0b0c]/95 px-4 pt-3 backdrop-blur-xl sm:px-5"
-            style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}
+            className="flex flex-none gap-2 border-t border-white/[0.08] bg-white/[0.025] px-3.5 pt-2.5 backdrop-blur-2xl sm:px-4"
+            style={{ paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}
           >
             <button
-              className="h-13 min-w-0 flex-1 rounded-2xl bg-white px-4 text-[16px] font-bold text-black shadow-[0_8px_28px_rgba(255,255,255,0.08)] transition active:scale-[0.99] disabled:opacity-50"
+              className="h-11 min-w-0 flex-1 rounded-[15px] border border-white/70 bg-white/90 px-3 text-[14px] font-bold text-black shadow-[0_8px_24px_rgba(255,255,255,0.07),inset_0_1px_0_rgba(255,255,255,0.65)] backdrop-blur-xl transition active:scale-[0.99] disabled:opacity-50"
               type="submit"
               disabled={saving || scanning}
             >
               {saving ? 'Guardando…' : transaction ? 'Guardar cambios' : 'Guardar movimiento'}
             </button>
             <button
-              className="h-13 shrink-0 rounded-2xl border border-white/[0.10] bg-white/[0.035] px-4 text-[15px] font-semibold text-white/55 transition active:scale-[0.99] disabled:opacity-50"
+              className={`h-11 shrink-0 rounded-[15px] px-3 text-[13px] font-semibold text-white/50 transition active:scale-[0.99] disabled:opacity-50 ${glassControl}`}
               type="button"
               onClick={onClose}
               disabled={saving}
