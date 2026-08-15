@@ -171,7 +171,7 @@ export function parseReceiptModelResult(raw: string, allowedCategories: string[]
 
   const { documentType, isFinancialDocument, ...value } = result.data;
   if (!isFinancialDocument || documentType === 'other') {
-    throw errors.validation('La imagen no parece ser un ticket, recibo, factura o comprobante de pago válido. Selecciona un comprobante financiero.');
+    throw new AppError(400, 'VALIDATION_FAILED', 'La imagen no parece ser un ticket, recibo, factura o comprobante de pago válido. Selecciona un comprobante financiero.', true);
   }
 
   const warnings = [...(value.warnings ?? [])];
