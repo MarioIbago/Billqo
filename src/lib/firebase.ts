@@ -1,6 +1,10 @@
-
 import { initializeApp, getApps, type FirebaseOptions } from 'firebase/app';
-import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import {
+  browserLocalPersistence,
+  getAuth,
+  indexedDBLocalPersistence,
+  setPersistence,
+} from 'firebase/auth';
 
 function envValue(value: string | undefined): string | undefined {
   const normalized = value?.trim();
@@ -27,9 +31,14 @@ const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 auth.useDeviceLanguage();
 
-export const authPersistenceReady = setPersistence(auth, browserLocalPersistence).catch((error: unknown) => {
-  console.warn('Firebase auth persistence could not be initialized.', error);
-});
+// Keep the Firebase session across browser/app restarts. IndexedDB is preferred
+// because it is durable on modern browsers; localStorage remains a compatible
+// fallback. setPersistence also migrates an already-restored Firebase session.
+export const authPersistenceReady = setPersistence(auth, indexedDBLocalPersistence)
+  .catch(() => setPersistence(auth, browserLocalPersistence))
+  .catch((error: unknown) => {
+    console.warn('Firebase auth persistence could not be initialized.', error);
+  });
 
 export const firebaseProjectId = firebaseConfig.projectId;
 export const firebaseAuthDomain = firebaseConfig.authDomain;
