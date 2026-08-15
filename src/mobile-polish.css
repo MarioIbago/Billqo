@@ -1,0 +1,43 @@
+@media (max-width: 560px) {
+  /* Keep the ticket editor compact on iPhone-sized screens without changing its fields or behavior. */
+  .crystal-public-page section.crystal-panel > form.grid {
+    gap: 10px;
+  }
+
+  .crystal-public-page section.crystal-panel > form.grid > div.grid {
+    gap: 8px;
+  }
+
+  .crystal-public-page section.crystal-panel > form.grid > div.grid:not(.grid-cols-3) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .crystal-public-page section.crystal-panel > form.grid label {
+    gap: 4px;
+    font-size: 11px;
+  }
+
+  .crystal-public-page section.crystal-panel > form.grid input,
+  .crystal-public-page section.crystal-panel > form.grid select {
+    min-height: 40px;
+    padding-left: 10px;
+    padding-right: 10px;
+    font-size: 12px;
+  }
+
+  .crystal-public-page section.crystal-panel > form.grid textarea {
+    min-height: 64px;
+    padding: 10px;
+    font-size: 12px;
+  }
+
+  .crystal-public-page section.crystal-panel > form.grid button.h-11 {
+    height: 40px;
+  }
+}
+
+@media (max-width: 340px) {
+  .crystal-public-page section.crystal-panel > form.grid > div.grid:not(.grid-cols-3) {
+    grid-template-columns: 1fr;
+  }
+}
