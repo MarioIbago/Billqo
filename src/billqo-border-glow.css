@@ -1,0 +1,108 @@
+/* React Bits BorderGlow-inspired treatment for Billqo.
+   The original effect follows the pointer; this adaptation keeps a subtle
+   monochrome sweep running continuously and intensifies it on interaction. */
+
+@property --billqo-border-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.crystal-panel,
+.crystal-auth-card,
+.crystal-landing-sheet-card,
+.crystal-privacy-public-card {
+  isolation: isolate;
+}
+
+.crystal-panel::after,
+.crystal-auth-card::after,
+.crystal-landing-sheet-card::after,
+.crystal-privacy-public-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 4;
+
+  /* Same directional/conic idea as BorderGlow, kept strictly grayscale. */
+  background: conic-gradient(
+    from var(--billqo-border-angle),
+    transparent 0deg,
+    transparent 208deg,
+    rgba(112, 114, 120, .08) 230deg,
+    rgba(198, 200, 205, .34) 250deg,
+    rgba(255, 255, 255, .96) 270deg,
+    rgba(210, 212, 218, .42) 291deg,
+    rgba(120, 122, 128, .10) 312deg,
+    transparent 334deg,
+    transparent 360deg
+  );
+
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+
+  opacity: .58;
+  filter: drop-shadow(0 0 7px rgba(255,255,255,.16));
+  will-change: --billqo-border-angle, opacity;
+  animation: billqo-border-sweep 7.5s linear infinite;
+  transition: opacity 220ms ease, filter 220ms ease;
+}
+
+.crystal-panel:hover::after,
+.crystal-panel:focus-within::after,
+.crystal-auth-card:hover::after,
+.crystal-auth-card:focus-within::after,
+.crystal-landing-sheet-card:hover::after,
+.crystal-landing-sheet-card:focus-within::after,
+.crystal-privacy-public-card:hover::after,
+.crystal-privacy-public-card:focus-within::after {
+  opacity: .92;
+  filter: drop-shadow(0 0 10px rgba(255,255,255,.28));
+  animation-duration: 5.25s;
+}
+
+/* Give larger cards slightly different phases so the interface does not move
+   like one synchronized block. */
+.crystal-panel:nth-of-type(2n)::after,
+.crystal-landing-sheet-card:nth-of-type(2n)::after,
+.crystal-privacy-public-card:nth-of-type(2n)::after {
+  animation-delay: -2.4s;
+}
+
+.crystal-panel:nth-of-type(3n)::after,
+.crystal-landing-sheet-card:nth-of-type(3n)::after,
+.crystal-privacy-public-card:nth-of-type(3n)::after {
+  animation-delay: -4.8s;
+}
+
+@keyframes billqo-border-sweep {
+  to { --billqo-border-angle: 360deg; }
+}
+
+@media (max-width: 767px) {
+  .crystal-panel::after,
+  .crystal-auth-card::after,
+  .crystal-landing-sheet-card::after,
+  .crystal-privacy-public-card::after {
+    opacity: .48;
+    filter: drop-shadow(0 0 5px rgba(255,255,255,.12));
+    animation-duration: 8.5s;
+  }
+}
+
+/* Keep motion present even when the pointer is idle. For users who explicitly
+   request reduced motion, slow it substantially instead of tying it to hover. */
+@media (prefers-reduced-motion: reduce) {
+  .crystal-panel::after,
+  .crystal-auth-card::after,
+  .crystal-landing-sheet-card::after,
+  .crystal-privacy-public-card::after {
+    animation-duration: 24s;
+  }
+}
