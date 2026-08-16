@@ -12,6 +12,7 @@ import {
 import { auth, authPersistenceReady } from '../lib/firebase';
 import { consumeFirebaseSignInExchange, googleSignInStartUrl } from '../lib/api';
 import { CuantlyBrand, CuantlyMark } from './CuantlyBrand';
+import SpecularButton from './SpecularButton';
 
 function GoogleLogo() {
   return (
@@ -115,11 +116,27 @@ export const AuthScreen: React.FC = () => {
           </div>
         )}
 
-        <button type="button" className="crystal-google-button" onClick={handleGoogleLogin} disabled={loading}>
+        <SpecularButton
+          size="lg"
+          radius={18}
+          tint="#17191d"
+          tintOpacity={0.94}
+          blur={20}
+          textColor="#ffffff"
+          lineColor="#ffffff"
+          baseColor="#6b7280"
+          intensity={1}
+          speed={0.35}
+          followMouse
+          autoAnimate
+          className="billqo-specular-auth"
+          onClick={handleGoogleLogin}
+          disabled={loading}
+        >
           {loading ? <LoaderCircle className="spin" size={20} /> : <GoogleLogo />}
           <span>{loading ? 'Conectando…' : 'Continuar con Google'}</span>
           {!loading && <ArrowRight size={18} />}
-        </button>
+        </SpecularButton>
 
         <section className="crystal-privacy-note">
           <LockKeyhole size={18} />
