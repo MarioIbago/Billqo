@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
-import { FileSpreadsheet, LoaderCircle } from 'lucide-react';
+import { FileSpreadsheet, LoaderCircle, LogOut } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AddTransactionModal } from './components/AddTransactionModal';
 import { BillingWorkspace } from './components/BillingWorkspace';
@@ -286,6 +286,12 @@ export function Dashboard() {
         onSignOut={() => void signOut(auth)}
         busy={loading}
       />
+      {activeView === 'movements' && (
+        <button type="button" className="crystal-mobile-signout crystal-signout-button" onClick={() => void signOut(auth)}>
+          <LogOut size={18} />
+          Cerrar sesión
+        </button>
+      )}
       {isModalOpen && (
         <AddTransactionModal
           transaction={editingTransaction}
