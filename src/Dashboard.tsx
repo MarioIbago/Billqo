@@ -286,7 +286,7 @@ export function Dashboard() {
         onSignOut={() => void signOut(auth)}
         busy={loading}
       />
-      {activeView === 'movements' && (
+      {activeView === 'movements' && !isModalOpen && (
         <button type="button" className="crystal-mobile-signout crystal-signout-button" onClick={() => void signOut(auth)}>
           <LogOut size={18} />
           Cerrar sesión
