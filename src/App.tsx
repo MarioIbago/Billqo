@@ -5,8 +5,10 @@ import { AuthScreen } from './components/AuthScreen';
 import { ColorBends } from './components/ColorBends';
 import DotField from './components/DotField';
 import { LandingPage } from './components/LandingPage';
+import { MotionPreferencePortal } from './components/MotionPreferencePortal';
 import { PrivacyPage } from './components/PrivacyPage';
 import { TermsPage } from './components/TermsPage';
+import { useAnimationPreference } from './lib/animationPreference';
 import { usePersistentSession } from './lib/usePersistentSession';
 
 function hasGoogleAuthCallback(): boolean {
@@ -14,7 +16,7 @@ function hasGoogleAuthCallback(): boolean {
   return status === 'google' || status === 'error';
 }
 
-function BillqoBackdrop() {
+function BillqoBackdrop({ animationsEnabled }: { animationsEnabled: boolean }) {
   return (
     <div className="billqo-backdrop" aria-hidden="true">
       <ColorBends
@@ -34,13 +36,13 @@ function BillqoBackdrop() {
         className="billqo-backdrop-dots"
         dotRadius={1.5}
         dotSpacing={14}
-        cursorRadius={500}
-        cursorForce={0.10}
+        cursorRadius={animationsEnabled ? 500 : 0}
+        cursorForce={animationsEnabled ? 0.10 : 0}
         bulgeOnly
-        bulgeStrength={67}
-        glowRadius={180}
+        bulgeStrength={animationsEnabled ? 67 : 0}
+        glowRadius={animationsEnabled ? 180 : 0}
         sparkle={false}
-        waveAmplitude={2.6}
+        waveAmplitude={animationsEnabled ? 2.6 : 0}
         gradientFrom="rgba(248, 250, 252, 0.24)"
         gradientTo="rgba(148, 163, 184, 0.16)"
         glowColor="rgba(226, 232, 240, 0.24)"
@@ -51,11 +53,12 @@ function BillqoBackdrop() {
 
 export default function App() {
   const { user, ready } = usePersistentSession();
+  const [animationsEnabled] = useAnimationPreference();
 
   if (!ready) {
     return (
       <>
-        <BillqoBackdrop />
+        <BillqoBackdrop animationsEnabled={animationsEnabled} />
         <main className="crystal-status-screen"><p>Comprobando tu sesión...</p></main>
       </>
     );
@@ -63,7 +66,7 @@ export default function App() {
 
   return (
     <>
-      <BillqoBackdrop />
+      <BillqoBackdrop animationsEnabled={animationsEnabled} />
       <HashRouter>
         <Routes>
           <Route path="/" element={user ? <Navigate to="/app" replace /> : <LandingPage />} />
@@ -76,6 +79,7 @@ export default function App() {
           <Route path="/app/*" element={user ? <Dashboard /> : <Navigate to="/auth" replace />} />
           <Route path="*" element={<Navigate to={user ? '/app' : '/'} replace />} />
         </Routes>
+        <MotionPreferencePortal />
       </HashRouter>
     </>
   );
