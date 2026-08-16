@@ -1,0 +1,59 @@
+/* Interaction hotfixes for Billqo overlays and mobile controls.
+   billqo-premium.css gives direct #root children a relative stacking context so
+   the animated backdrop stays behind the app. Tailwind overlays such as the
+   add-transaction modal are also direct children and use `.fixed`, so restore
+   their intended positioning explicitly here. */
+
+#root > .fixed {
+  position: fixed !important;
+}
+
+#root > .absolute {
+  position: absolute !important;
+}
+
+button,
+[role='button'] {
+  touch-action: manipulation;
+}
+
+.crystal-mobile-nav {
+  z-index: 110 !important;
+  pointer-events: auto !important;
+  isolation: isolate;
+}
+
+.crystal-mobile-nav > button,
+.crystal-mobile-header-menu,
+.crystal-workspace-actions button {
+  pointer-events: auto !important;
+  touch-action: manipulation;
+}
+
+.crystal-more-menu {
+  z-index: 120 !important;
+  pointer-events: auto !important;
+  isolation: isolate;
+}
+
+.crystal-more-menu button {
+  pointer-events: auto !important;
+  touch-action: manipulation;
+}
+
+@media (max-width: 767px) {
+  .crystal-more-menu {
+    right: max(10px, env(safe-area-inset-right)) !important;
+    bottom: calc(max(8px, env(safe-area-inset-bottom)) + 76px) !important;
+    max-height: calc(100dvh - 170px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* Keep the center + action and “Más” action above decorative/glass layers. */
+  .crystal-mobile-add,
+  .crystal-mobile-nav > button:last-child {
+    position: relative;
+    z-index: 2;
+  }
+}
