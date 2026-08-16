@@ -23,8 +23,10 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import '../landing-seo.css';
+import BorderGlow from './BorderGlow';
 import { CuantlyBrand } from './CuantlyBrand';
 import { PublicReportForm } from './PublicReportForm';
+import SpecularButton from './SpecularButton';
 
 const GITHUB_PROFILE_URL = 'https://github.com/marioibarrag';
 const CONTACT_EMAIL = 'juanter@gmail.com';
@@ -138,9 +140,6 @@ export const LandingPage: React.FC = () => {
 
   return (
     <div className="crystal-public-page crystal-landing-page crystal-landing-screen">
-      <div className="crystal-orb crystal-orb-a" aria-hidden="true" />
-      <div className="crystal-orb crystal-orb-b" aria-hidden="true" />
-
       <div className="crystal-landing-shell">
         <header className="crystal-landing-header">
           <CuantlyBrand />
@@ -171,10 +170,29 @@ export const LandingPage: React.FC = () => {
               <p>Tu información financiera, disponible en todos tus dispositivos de forma segura. Registra ingresos y gastos, crea presupuestos y entiende tus finanzas personales desde un solo lugar.</p>
 
               <div className="crystal-landing-hero-actions">
-                <button type="button" className="crystal-landing-primary-button" onClick={openAuth}>
+                <SpecularButton
+                  size="lg"
+                  radius={18}
+                  tint="#17191d"
+                  tintOpacity={0.95}
+                  blur={22}
+                  textColor="#ffffff"
+                  lineColor="#ffffff"
+                  baseColor="#6b7280"
+                  intensity={1}
+                  shineSize={10}
+                  shineFade={40}
+                  thickness={1}
+                  speed={0.35}
+                  followMouse
+                  proximity={250}
+                  autoAnimate
+                  className="billqo-specular-hero"
+                  onClick={openAuth}
+                >
                   Comenzar con Google
                   <ArrowRight size={18} />
-                </button>
+                </SpecularButton>
                 <button type="button" className="crystal-landing-text-button" onClick={() => scrollTo('funciones')}>
                   Ver funciones
                   <ArrowDown size={16} />
@@ -182,21 +200,35 @@ export const LandingPage: React.FC = () => {
               </div>
             </div>
 
-            <aside className="crystal-landing-sheet-card" aria-label="Cómo protege Billqo tu información">
-              <div className="crystal-landing-sheet-card-head">
-                <span><FileSpreadsheet size={17} /> Tu espacio financiero</span>
-                <ShieldCheck size={18} aria-hidden="true" />
-              </div>
-              <h2>Tu Sheet, tus datos.</h2>
-              <p>Billqo crea o reutiliza un archivo de Google Sheets en tu Drive. Tus movimientos financieros permanecen en un documento que tú controlas.</p>
-              <div className="crystal-landing-sheet-flow" aria-label="Flujo de datos de Billqo">
-                <div><LogIn size={17} /><span>Google confirma tu acceso</span></div>
-                <i aria-hidden="true" />
-                <div><FileSpreadsheet size={17} /><span>Tu Sheet guarda tus finanzas</span></div>
-                <i aria-hidden="true" />
-                <div><LockKeyhole size={17} /><span>Billqo trabaja con tu permiso</span></div>
-              </div>
-            </aside>
+            <BorderGlow
+              className="billqo-hero-glow"
+              edgeSensitivity={28}
+              glowColor="0 0 100"
+              backgroundColor="rgba(255,255,255,.42)"
+              borderRadius={26}
+              glowRadius={34}
+              glowIntensity={0.74}
+              coneSpread={23}
+              animated
+              colors={['#ffffff', '#d4d4d8', '#9ca3af']}
+              fillOpacity={0.10}
+            >
+              <aside className="crystal-landing-sheet-card" aria-label="Cómo protege Billqo tu información">
+                <div className="crystal-landing-sheet-card-head">
+                  <span><FileSpreadsheet size={17} /> Tu espacio financiero</span>
+                  <ShieldCheck size={18} aria-hidden="true" />
+                </div>
+                <h2>Tu Sheet, tus datos.</h2>
+                <p>Billqo crea o reutiliza un archivo de Google Sheets en tu Drive. Tus movimientos financieros permanecen en un documento que tú controlas.</p>
+                <div className="crystal-landing-sheet-flow" aria-label="Flujo de datos de Billqo">
+                  <div><LogIn size={17} /><span>Google confirma tu acceso</span></div>
+                  <i aria-hidden="true" />
+                  <div><FileSpreadsheet size={17} /><span>Tu Sheet guarda tus finanzas</span></div>
+                  <i aria-hidden="true" />
+                  <div><LockKeyhole size={17} /><span>Billqo trabaja con tu permiso</span></div>
+                </div>
+              </aside>
+            </BorderGlow>
           </section>
 
           <section id="funciones" className="crystal-landing-section crystal-landing-features" aria-labelledby="features-title">

@@ -11,7 +11,9 @@ import {
 } from 'lucide-react';
 import { auth, authPersistenceReady } from '../lib/firebase';
 import { consumeFirebaseSignInExchange, googleSignInStartUrl } from '../lib/api';
+import BorderGlow from './BorderGlow';
 import { CuantlyBrand, CuantlyMark } from './CuantlyBrand';
+import SpecularButton from './SpecularButton';
 
 function GoogleLogo() {
   return (
@@ -44,7 +46,6 @@ export const AuthScreen: React.FC = () => {
   useEffect(() => {
     const returned = callbackStatus();
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      // Do not leave the callback before exchanging its one-time token.
       if (currentUser && returned !== 'google') navigate('/app', { replace: true });
     });
 
@@ -90,54 +91,85 @@ export const AuthScreen: React.FC = () => {
 
   return (
     <div className="crystal-public-page crystal-auth-page">
-      <div className="crystal-orb crystal-orb-a" aria-hidden="true" />
-      <div className="crystal-orb crystal-orb-b" aria-hidden="true" />
+      <BorderGlow
+        className="billqo-auth-glow"
+        edgeSensitivity={28}
+        glowColor="0 0 100"
+        backgroundColor="rgba(255,255,255,.46)"
+        borderRadius={28}
+        glowRadius={38}
+        glowIntensity={0.76}
+        coneSpread={22}
+        animated
+        colors={['#ffffff', '#d4d4d8', '#9ca3af']}
+        fillOpacity={0.08}
+      >
+        <main className="crystal-auth-card" aria-labelledby="auth-title">
+          <button className="crystal-back-link" onClick={() => navigate('/')} type="button">
+            <ArrowLeft size={17} />
+            Volver
+          </button>
 
-      <main className="crystal-auth-card" aria-labelledby="auth-title">
-        <button className="crystal-back-link" onClick={() => navigate('/')} type="button">
-          <ArrowLeft size={17} />
-          Volver
-        </button>
+          <div className="crystal-auth-brand"><CuantlyBrand /></div>
+          <div className="crystal-auth-mark" aria-hidden="true"><CuantlyMark size={26} /></div>
 
-        <div className="crystal-auth-brand"><CuantlyBrand /></div>
-        <div className="crystal-auth-mark" aria-hidden="true"><CuantlyMark size={26} /></div>
-
-        <div className="crystal-auth-copy">
-          <span className="crystal-eyebrow">Acceso seguro</span>
-          <h1 id="auth-title">Bienvenido de nuevo</h1>
-          <p>Usa tu cuenta de Google para entrar y autorizar tu espacio financiero.</p>
-        </div>
-
-        {error && (
-          <div className="crystal-alert crystal-alert-error" role="alert">
-            <ShieldCheck size={19} />
-            <span>{error}</span>
+          <div className="crystal-auth-copy">
+            <span className="crystal-eyebrow">Acceso seguro</span>
+            <h1 id="auth-title">Bienvenido de nuevo</h1>
+            <p>Usa tu cuenta de Google para entrar y autorizar tu espacio financiero.</p>
           </div>
-        )}
 
-        <button type="button" className="crystal-google-button" onClick={handleGoogleLogin} disabled={loading}>
-          {loading ? <LoaderCircle className="spin" size={20} /> : <GoogleLogo />}
-          <span>{loading ? 'Conectando…' : 'Continuar con Google'}</span>
-          {!loading && <ArrowRight size={18} />}
-        </button>
+          {error && (
+            <div className="crystal-alert crystal-alert-error" role="alert">
+              <ShieldCheck size={19} />
+              <span>{error}</span>
+            </div>
+          )}
 
-        <section className="crystal-privacy-note">
-          <LockKeyhole size={18} />
-          <div>
-            <strong>Tus datos siguen bajo tu control</strong>
-            <p>Firebase confirma tu identidad. Tus movimientos permanecen en tu Google Sheet privado.</p>
+          <SpecularButton
+            size="md"
+            radius={17}
+            tint="#17191d"
+            tintOpacity={0.95}
+            blur={22}
+            textColor="#ffffff"
+            lineColor="#ffffff"
+            baseColor="#6b7280"
+            intensity={1}
+            shineSize={10}
+            shineFade={40}
+            thickness={1}
+            speed={0.35}
+            followMouse
+            proximity={250}
+            autoAnimate
+            className="billqo-specular-google"
+            onClick={handleGoogleLogin}
+            disabled={loading}
+          >
+            {loading ? <LoaderCircle className="spin" size={20} /> : <GoogleLogo />}
+            <span>{loading ? 'Conectando…' : 'Continuar con Google'}</span>
+            {!loading && <ArrowRight size={18} />}
+          </SpecularButton>
+
+          <section className="crystal-privacy-note">
+            <LockKeyhole size={18} />
+            <div>
+              <strong>Tus datos siguen bajo tu control</strong>
+              <p>Firebase confirma tu identidad. Tus movimientos permanecen en tu Google Sheet privado.</p>
+            </div>
+          </section>
+
+          <button type="button" className="crystal-auth-privacy-link" onClick={() => navigate('/privacy')}>
+            Leer privacidad y control de datos
+          </button>
+
+          <div className="crystal-auth-meta">
+            <span><FileSpreadsheet size={15} /> Google Sheets</span>
+            <span><ShieldCheck size={15} /> Solo acceso con Google</span>
           </div>
-        </section>
-
-        <button type="button" className="crystal-auth-privacy-link" onClick={() => navigate('/privacy')}>
-          Leer privacidad y control de datos
-        </button>
-
-        <div className="crystal-auth-meta">
-          <span><FileSpreadsheet size={15} /> Google Sheets</span>
-          <span><ShieldCheck size={15} /> Solo acceso con Google</span>
-        </div>
-      </main>
+        </main>
+      </BorderGlow>
     </div>
   );
 };

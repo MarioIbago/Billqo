@@ -1,0 +1,544 @@
+/* Billqo Glass 2026 ----------------------------------------------------
+   Light glassmorphism system built around the React Bits-inspired ColorBends,
+   DotField, BorderGlow and SpecularButton treatments. Imported last so the
+   financial/product behavior stays untouched while the visual layer is unified. */
+
+@property --billqo-glow-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+:root {
+  --billqo-page: #f5f6f8;
+  --billqo-page-2: #eef0f3;
+  --billqo-ink: #16181c;
+  --billqo-muted: rgba(22, 24, 28, .61);
+  --billqo-dim: rgba(22, 24, 28, .44);
+  --billqo-glass: rgba(255, 255, 255, .47);
+  --billqo-glass-strong: rgba(255, 255, 255, .66);
+  --billqo-glass-soft: rgba(255, 255, 255, .28);
+  --billqo-stroke: rgba(17, 24, 39, .09);
+  --billqo-stroke-strong: rgba(17, 24, 39, .14);
+  --billqo-highlight: rgba(255, 255, 255, .86);
+  --billqo-shadow: 0 24px 70px rgba(15, 23, 42, .10), inset 0 1px 0 rgba(255, 255, 255, .88);
+  --billqo-shadow-soft: 0 14px 40px rgba(15, 23, 42, .075), inset 0 1px 0 rgba(255, 255, 255, .75);
+  --workspace-bg: transparent;
+  --workspace-text: var(--billqo-ink);
+  --workspace-muted: var(--billqo-muted);
+  --workspace-dim: var(--billqo-dim);
+  --workspace-line: var(--billqo-stroke);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  background: var(--billqo-page) !important;
+  color: var(--billqo-ink) !important;
+}
+
+body { background: transparent !important; }
+#root { position: relative; isolation: isolate; }
+
+/* Global animated backdrop --------------------------------------------- */
+#root > .billqo-backdrop {
+  position: fixed !important;
+  z-index: 0 !important;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 4%, rgba(255,255,255,.98), transparent 34%),
+    radial-gradient(circle at 78% 28%, rgba(226,229,234,.74), transparent 40%),
+    linear-gradient(180deg, #fbfbfc 0%, var(--billqo-page) 54%, #f9fafb 100%);
+}
+
+#root > *:not(.billqo-backdrop) {
+  position: relative;
+  z-index: 1;
+}
+
+.billqo-backdrop .billqo-color-bends {
+  position: absolute !important;
+  z-index: 0 !important;
+  inset: -8% !important;
+  background: transparent !important;
+}
+
+.billqo-backdrop .billqo-color-bend {
+  opacity: calc(.13 * var(--bend-intensity)) !important;
+  filter: blur(58px) saturate(0) !important;
+  mix-blend-mode: multiply !important;
+}
+
+.billqo-backdrop .billqo-color-bend-a {
+  background: linear-gradient(90deg, transparent 3%, #d6d9de 34%, #ffffff 55%, #b9bec6 72%, transparent 91%) !important;
+}
+.billqo-backdrop .billqo-color-bend-b {
+  background: linear-gradient(90deg, transparent 5%, #ffffff 27%, #c8ccd2 53%, #eef0f3 72%, transparent 93%) !important;
+}
+.billqo-backdrop .billqo-color-bend-c {
+  opacity: calc(.085 * var(--bend-intensity)) !important;
+  background: linear-gradient(90deg, transparent 6%, #bfc4cb 38%, #ffffff 61%, #d8dce1 78%, transparent 94%) !important;
+}
+.billqo-backdrop .billqo-color-bends-noise {
+  opacity: calc(var(--bend-noise) * .07) !important;
+  mix-blend-mode: multiply !important;
+}
+
+.billqo-backdrop-dots {
+  position: absolute !important;
+  z-index: 1;
+  inset: 0;
+  opacity: .70;
+  mix-blend-mode: multiply;
+}
+
+/* Remove legacy dark scenery; the global background now owns the scene. */
+.crystal-orb { display: none !important; }
+.crystal-public-page,
+.crystal-app-shell,
+.crystal-workspace,
+.crystal-landing-page,
+.crystal-auth-page {
+  color: var(--billqo-ink) !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+.crystal-status-screen {
+  color: var(--billqo-muted) !important;
+  background: transparent !important;
+}
+
+/* Typography and hierarchy -------------------------------------------- */
+.crystal-screen-heading h1,
+.crystal-landing-hero h1,
+.crystal-landing-section-copy h2,
+.crystal-landing-report-copy h2,
+.crystal-auth-copy h1,
+.crystal-privacy-public-intro h1,
+.crystal-panel h2,
+.crystal-panel h3,
+.crystal-landing-sheet-card h2,
+.crystal-landing-feature h3,
+.crystal-landing-step h3,
+.crystal-landing-faq-item summary {
+  color: var(--billqo-ink) !important;
+}
+
+.crystal-screen-heading p,
+.crystal-panel-heading p,
+.crystal-landing-hero p,
+.crystal-landing-section-copy p,
+.crystal-landing-sheet-card p,
+.crystal-landing-feature p,
+.crystal-landing-step p,
+.crystal-landing-faq-item p,
+.crystal-landing-report-copy p,
+.crystal-auth-copy p,
+.crystal-privacy-public-intro > p,
+.crystal-privacy-public-card p,
+.crystal-privacy-public-card li,
+.crystal-empty-state p {
+  color: var(--billqo-muted) !important;
+}
+
+.crystal-kicker,
+.crystal-eyebrow,
+.crystal-panel small,
+.crystal-auth-meta,
+.crystal-landing-report-copy small,
+.crystal-transaction-copy small,
+.crystal-transaction-amount small {
+  color: var(--billqo-dim) !important;
+}
+
+/* Frosted surface system ---------------------------------------------- */
+.crystal-workspace-header,
+.crystal-landing-header,
+.crystal-mobile-nav,
+.crystal-more-menu,
+.crystal-landing-menu,
+.crystal-privacy-public-header {
+  border: 1px solid rgba(255,255,255,.74) !important;
+  background: rgba(255,255,255,.58) !important;
+  box-shadow: 0 16px 48px rgba(15,23,42,.09), inset 0 1px 0 rgba(255,255,255,.93) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(140%) !important;
+  backdrop-filter: blur(30px) saturate(140%) !important;
+}
+
+.crystal-panel,
+.crystal-auth-card,
+.crystal-landing-sheet-card,
+.crystal-landing-feature,
+.crystal-landing-step,
+.crystal-landing-faq-item,
+.crystal-landing-report,
+.crystal-privacy-public-card,
+.crystal-privacy-note,
+.crystal-alert,
+.crystal-empty-state {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid rgba(255,255,255,.72) !important;
+  background: linear-gradient(145deg, rgba(255,255,255,.61), rgba(255,255,255,.30)) !important;
+  box-shadow: var(--billqo-shadow-soft) !important;
+  -webkit-backdrop-filter: blur(26px) saturate(132%) !important;
+  backdrop-filter: blur(26px) saturate(132%) !important;
+}
+
+.crystal-panel,
+.crystal-auth-card,
+.crystal-landing-sheet-card,
+.crystal-privacy-public-card {
+  box-shadow: var(--billqo-shadow) !important;
+}
+
+/* Continuous white/gray BorderGlow sweep on native Billqo cards. */
+.crystal-panel::after,
+.crystal-auth-card::after,
+.crystal-landing-sheet-card::after,
+.crystal-privacy-public-card::after,
+.crystal-landing-feature::after,
+.crystal-landing-step::after {
+  content: '';
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--billqo-glow-angle),
+    transparent 0deg,
+    transparent 212deg,
+    rgba(107,114,128,.06) 232deg,
+    rgba(156,163,175,.28) 250deg,
+    rgba(255,255,255,.98) 270deg,
+    rgba(209,213,219,.46) 292deg,
+    rgba(107,114,128,.08) 312deg,
+    transparent 334deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  filter: drop-shadow(0 0 7px rgba(255,255,255,.62));
+  opacity: .70;
+  animation: billqo-glass-border-spin 8.4s linear infinite;
+}
+
+.crystal-panel:nth-of-type(2n)::after,
+.crystal-landing-feature:nth-of-type(2n)::after,
+.crystal-landing-step:nth-of-type(2n)::after { animation-delay: -2.8s; }
+.crystal-panel:nth-of-type(3n)::after,
+.crystal-landing-feature:nth-of-type(3n)::after { animation-delay: -5.6s; }
+
+.crystal-panel:hover::after,
+.crystal-auth-card:hover::after,
+.crystal-landing-sheet-card:hover::after,
+.crystal-landing-feature:hover::after,
+.crystal-landing-step:hover::after {
+  opacity: 1;
+  filter: drop-shadow(0 0 10px rgba(255,255,255,.88));
+}
+
+@keyframes billqo-glass-border-spin { to { --billqo-glow-angle: 360deg; } }
+
+/* Actual BorderGlow wrapper integration on showcase cards. */
+.billqo-hero-glow,
+.billqo-auth-glow {
+  width: 100%;
+  min-width: 0;
+}
+.billqo-hero-glow .border-glow-inner,
+.billqo-auth-glow .border-glow-inner { overflow: visible; }
+.billqo-hero-glow .crystal-landing-sheet-card,
+.billqo-auth-glow .crystal-auth-card {
+  width: 100% !important;
+  margin: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.billqo-hero-glow .crystal-landing-sheet-card::after,
+.billqo-auth-glow .crystal-auth-card::after { display: none !important; }
+.billqo-auth-glow {
+  width: min(510px, calc(100% - 24px));
+  margin: auto;
+}
+
+/* Landing polish ------------------------------------------------------- */
+.crystal-landing-shell {
+  width: min(1180px, calc(100% - 34px)) !important;
+}
+.crystal-landing-header {
+  top: 12px !important;
+  border-radius: 22px !important;
+}
+.crystal-landing-nav > button:not(.crystal-landing-login-button),
+.crystal-landing-menu > button,
+.crystal-landing-footer button,
+.crystal-landing-footer a {
+  color: var(--billqo-muted) !important;
+}
+.crystal-landing-nav > button:not(.crystal-landing-login-button):hover,
+.crystal-landing-footer button:hover,
+.crystal-landing-footer a:hover { color: var(--billqo-ink) !important; }
+
+.crystal-landing-hero {
+  min-height: min(760px, 82vh) !important;
+  gap: clamp(28px, 5vw, 72px) !important;
+}
+.crystal-landing-hero-copy { max-width: 650px !important; }
+.crystal-landing-hero h1 {
+  font-size: clamp(52px, 7.3vw, 94px) !important;
+  line-height: .94 !important;
+  letter-spacing: -.065em !important;
+}
+.crystal-landing-hero p {
+  max-width: 610px !important;
+  font-size: clamp(14px, 1.4vw, 17px) !important;
+  line-height: 1.72 !important;
+}
+.crystal-landing-hero-actions { align-items: center; gap: 11px !important; }
+.crystal-landing-text-button { color: rgba(22,24,28,.66) !important; }
+.crystal-landing-text-button:hover { color: var(--billqo-ink) !important; }
+
+.crystal-landing-feature,
+.crystal-landing-step,
+.crystal-landing-faq-item {
+  transition: transform .22s ease, box-shadow .22s ease, background .22s ease !important;
+}
+.crystal-landing-feature:hover,
+.crystal-landing-step:hover {
+  transform: translateY(-3px);
+  background: linear-gradient(145deg, rgba(255,255,255,.73), rgba(255,255,255,.39)) !important;
+  box-shadow: 0 20px 54px rgba(15,23,42,.10), inset 0 1px 0 rgba(255,255,255,.94) !important;
+}
+
+.crystal-landing-feature-icon,
+.crystal-landing-step-icon,
+.crystal-auth-mark,
+.crystal-transaction-icon,
+.crystal-empty-icon {
+  border: 1px solid rgba(17,24,39,.08) !important;
+  background: rgba(255,255,255,.58) !important;
+  color: #30343a !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.85), 0 8px 20px rgba(15,23,42,.06) !important;
+}
+
+.crystal-landing-sheet-flow > div,
+.crystal-auth-meta > span {
+  color: var(--billqo-muted) !important;
+  border-color: rgba(17,24,39,.08) !important;
+  background: rgba(255,255,255,.40) !important;
+}
+
+.crystal-landing-report { border-radius: 28px !important; }
+.crystal-landing-footer { color: var(--billqo-dim) !important; border-color: rgba(17,24,39,.08) !important; }
+
+/* Auth ---------------------------------------------------------------- */
+.crystal-auth-page { padding: 34px 16px !important; }
+.crystal-auth-card { color: var(--billqo-ink) !important; }
+.crystal-google-button { display: none !important; }
+.crystal-privacy-note strong { color: var(--billqo-ink) !important; }
+.crystal-privacy-note p { color: var(--billqo-muted) !important; }
+.crystal-auth-privacy-link { color: var(--billqo-muted) !important; }
+.crystal-auth-privacy-link:hover { color: var(--billqo-ink) !important; }
+.crystal-alert-error { color: #8b2e34 !important; background: rgba(255,245,245,.68) !important; border-color: rgba(185,28,28,.13) !important; }
+
+/* Workspace ------------------------------------------------------------ */
+.crystal-workspace-header { border-radius: 0 0 22px 22px !important; }
+.crystal-workspace-brand {
+  color: var(--billqo-ink) !important;
+}
+
+.crystal-workspace-nav button,
+.crystal-mobile-nav button,
+.crystal-more-menu button {
+  color: var(--billqo-muted) !important;
+}
+.crystal-workspace-nav button:hover,
+.crystal-mobile-nav button:hover,
+.crystal-more-menu button:hover,
+.crystal-workspace-nav button.is-active,
+.crystal-mobile-nav button.is-active {
+  color: var(--billqo-ink) !important;
+  background: rgba(17,24,39,.06) !important;
+}
+
+.crystal-screen-heading { color: var(--billqo-ink) !important; }
+.crystal-panel::before {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.92), transparent) !important;
+}
+
+.crystal-transaction-row,
+.crystal-budget-row,
+.crystal-category-row,
+.crystal-recurring-row {
+  border-color: rgba(17,24,39,.065) !important;
+  background: rgba(255,255,255,.22) !important;
+}
+.crystal-transaction-row:hover,
+.crystal-budget-row:hover,
+.crystal-category-row:hover,
+.crystal-recurring-row:hover { background: rgba(255,255,255,.48) !important; }
+.crystal-transaction-copy strong,
+.crystal-transaction-amount strong { color: var(--billqo-ink); }
+
+.crystal-chart-grid { stroke: rgba(17,24,39,.08) !important; }
+.crystal-chart-labels,
+.crystal-chart-legend { color: var(--billqo-dim) !important; }
+
+/* Inputs / controls ---------------------------------------------------- */
+.crystal-workspace input,
+.crystal-workspace select,
+.crystal-workspace textarea,
+.crystal-public-page input,
+.crystal-public-page select,
+.crystal-public-page textarea,
+.crystal-search,
+.crystal-filter,
+.crystal-period-control,
+.crystal-date-control {
+  color: var(--billqo-ink) !important;
+  border-color: rgba(17,24,39,.09) !important;
+  background-color: rgba(255,255,255,.52) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.86), 0 7px 22px rgba(15,23,42,.045) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(120%) !important;
+  backdrop-filter: blur(18px) saturate(120%) !important;
+}
+.crystal-workspace input::placeholder,
+.crystal-workspace textarea::placeholder,
+.crystal-public-page input::placeholder,
+.crystal-public-page textarea::placeholder { color: rgba(22,24,28,.37) !important; }
+
+/* Buttons -------------------------------------------------------------- */
+.crystal-button,
+.crystal-icon-button,
+.crystal-back-link,
+.crystal-legal-link,
+.crystal-landing-menu-button,
+.crystal-landing-login-button {
+  color: var(--billqo-ink) !important;
+  border: 1px solid rgba(17,24,39,.09) !important;
+  background: rgba(255,255,255,.52) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.92), 0 8px 24px rgba(15,23,42,.06) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(130%) !important;
+  backdrop-filter: blur(18px) saturate(130%) !important;
+}
+
+.crystal-button:hover,
+.crystal-icon-button:hover,
+.crystal-back-link:hover,
+.crystal-legal-link:hover,
+.crystal-landing-menu-button:hover,
+.crystal-landing-login-button:hover {
+  color: #08090b !important;
+  background: rgba(255,255,255,.76) !important;
+  border-color: rgba(17,24,39,.13) !important;
+}
+
+.crystal-button-primary {
+  position: relative;
+  overflow: hidden;
+  color: #f8fafc !important;
+  border-color: rgba(17,24,39,.54) !important;
+  background: linear-gradient(180deg, rgba(48,50,55,.97), rgba(20,22,25,.98)) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 12px 30px rgba(15,23,42,.16) !important;
+}
+.crystal-button-primary:hover {
+  color: #fff !important;
+  background: linear-gradient(180deg, rgba(57,59,64,.98), rgba(15,17,20,.99)) !important;
+}
+.crystal-button-primary::after {
+  content: '';
+  position: absolute;
+  inset: -70% -30%;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.34) 49%, rgba(255,255,255,.72) 50%, rgba(255,255,255,.25) 52%, transparent 60%);
+  transform: translateX(-45%);
+  animation: billqo-button-shine 5.6s ease-in-out infinite;
+}
+@keyframes billqo-button-shine {
+  0%, 58% { transform: translateX(-55%); opacity: 0; }
+  64% { opacity: .9; }
+  82%, 100% { transform: translateX(55%); opacity: 0; }
+}
+
+.crystal-button-danger {
+  color: #a02f38 !important;
+  border-color: rgba(185,28,28,.14) !important;
+  background: rgba(255,245,245,.54) !important;
+}
+
+/* SpecularButton instances -------------------------------------------- */
+.billqo-specular-hero,
+.billqo-specular-google {
+  --sb-tint: #17191d;
+  --sb-tint-opacity: .95;
+  --sb-blur: 22px;
+  --sb-text-color: #ffffff;
+  --sb-base-color: #6b7280;
+  --sb-line-color: #ffffff;
+}
+.billqo-specular-google { width: 100%; }
+.billqo-specular-google .specular-button__label { width: 100%; justify-content: space-between; }
+
+/* Legal pages ---------------------------------------------------------- */
+.crystal-privacy-public-header { color: var(--billqo-ink) !important; }
+.crystal-privacy-public-card h2 { color: var(--billqo-ink) !important; }
+.crystal-privacy-public-card p,
+.crystal-privacy-public-card li { color: var(--billqo-muted) !important; }
+
+/* Responsive ----------------------------------------------------------- */
+@media (max-width: 900px) {
+  .crystal-landing-hero { min-height: auto !important; padding-top: 112px !important; }
+  .billqo-hero-glow { max-width: 680px; }
+}
+
+@media (max-width: 767px) {
+  .billqo-backdrop .billqo-color-bend {
+    opacity: calc(.10 * var(--bend-intensity)) !important;
+    filter: blur(44px) saturate(0) !important;
+  }
+  .billqo-backdrop-dots { opacity: .56; }
+  .crystal-landing-shell { width: min(100% - 18px, 700px) !important; }
+  .crystal-landing-header { top: 7px !important; border-radius: 18px !important; }
+  .crystal-landing-hero h1 { font-size: clamp(45px, 14vw, 66px) !important; }
+  .crystal-landing-hero p { font-size: 13.5px !important; }
+  .crystal-panel,
+  .crystal-auth-card,
+  .crystal-landing-sheet-card,
+  .crystal-landing-feature,
+  .crystal-landing-step,
+  .crystal-landing-faq-item,
+  .crystal-landing-report,
+  .crystal-privacy-public-card {
+    background: linear-gradient(145deg, rgba(255,255,255,.68), rgba(255,255,255,.39)) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(128%) !important;
+    backdrop-filter: blur(22px) saturate(128%) !important;
+  }
+  .crystal-workspace-header { border-radius: 0 0 18px 18px !important; }
+  .billqo-auth-glow { width: min(100% - 8px, 510px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crystal-panel::after,
+  .crystal-auth-card::after,
+  .crystal-landing-sheet-card::after,
+  .crystal-privacy-public-card::after,
+  .crystal-landing-feature::after,
+  .crystal-landing-step::after { animation-duration: 24s; }
+  .crystal-button-primary::after { animation-duration: 14s; }
+  /* Keep the backdrop alive but make it deliberately slow. */
+  .billqo-color-bend-a { animation-duration: calc(var(--bend-duration) * 2.4) !important; }
+  .billqo-color-bend-b { animation-duration: calc(var(--bend-duration) * 2.9) !important; }
+  .billqo-color-bend-c { animation-duration: calc(var(--bend-duration) * 3.2) !important; }
+}
