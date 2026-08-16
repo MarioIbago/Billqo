@@ -9,26 +9,41 @@ import './mobile-polish.css';
 import './billqo-premium.css';
 import './billqo-interactions.css';
 import './billqo-interface-fixes.css';
+import './billqo-requested-ui.css';
 
-// The local OAuth callback is registered on 127.0.0.1.  `localhost` and
+const APP_BASE_PATH = '/app';
+
+// The local OAuth callback is registered on 127.0.0.1. `localhost` and
 // `127.0.0.1` are different browser origins, so using both would make the
-// Firebase session disappear when Google redirects back after consent. Keep a
-// single canonical local origin while preserving the current hash route.
+// Firebase session disappear when Google redirects back after consent.
 const mustUseCanonicalLocalOrigin = import.meta.env.DEV && window.location.hostname === 'localhost';
-const publicRoute = window.location.pathname.replace(/\/+$/, '');
+
+function canonicalizeClientUrl(): void {
+  const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
+  const routeFromPath = normalizedPath === '/' || normalizedPath === APP_BASE_PATH
+    ? '/'
+    : normalizedPath.startsWith(`${APP_BASE_PATH}/`)
+      ? normalizedPath.slice(APP_BASE_PATH.length) || '/'
+      : normalizedPath;
+  const hash = window.location.hash || `#${routeFromPath}`;
+  const target = `${APP_BASE_PATH}/${window.location.search}${hash}`;
+  const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+  if (current !== target) {
+    window.history.replaceState({}, document.title, target);
+  }
+}
 
 if (mustUseCanonicalLocalOrigin) {
   const canonicalUrl = new URL(window.location.href);
   canonicalUrl.hostname = '127.0.0.1';
   window.location.replace(canonicalUrl.toString());
 } else {
+  // All client pages share one physical /app/ entry point. HashRouter owns the
+  // route after that point, so old clean aliases keep working without reloads:
+  // /privacy -> /app/#/privacy, /terms -> /app/#/terms, /auth -> /app/#/auth.
+  canonicalizeClientUrl();
   installClientGuards();
-
-  // Google branding fields use clean, public URLs.  The app itself uses a
-  // HashRouter, so normalize those public aliases before React mounts.
-  if ((publicRoute === '/privacy' || publicRoute === '/terms') && !window.location.hash) {
-    window.history.replaceState({}, document.title, `/#${publicRoute}${window.location.search}`);
-  }
 
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
