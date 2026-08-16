@@ -31,7 +31,7 @@ function callbackStatus(): 'google' | 'error' | undefined {
 }
 
 function clearCallbackStatus(): void {
-  const path = window.location.pathname || '/';
+  const path = window.location.pathname || '/app/';
   const hash = window.location.hash || '#/auth';
   window.history.replaceState({}, document.title, `${path}${hash}`);
 }
@@ -46,7 +46,7 @@ export const AuthScreen: React.FC = () => {
     const returned = callbackStatus();
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       // Do not leave the callback before exchanging its one-time token.
-      if (currentUser && returned !== 'google') navigate('/app', { replace: true });
+      if (currentUser && returned !== 'google') navigate('/', { replace: true });
     });
 
     void (async () => {
@@ -57,7 +57,7 @@ export const AuthScreen: React.FC = () => {
         return;
       }
       if (returned !== 'google') {
-        if (auth.currentUser) navigate('/app', { replace: true });
+        if (auth.currentUser) navigate('/', { replace: true });
         return;
       }
       if (exchangeStarted.current) return;
@@ -69,7 +69,7 @@ export const AuthScreen: React.FC = () => {
         if (!customToken) throw new Error('missing_sign_in_exchange');
         await signInWithCustomToken(auth, customToken);
         clearCallbackStatus();
-        navigate('/app', { replace: true });
+        navigate('/', { replace: true });
       } catch {
         clearCallbackStatus();
         setError('Google confirmó tu cuenta, pero no pudimos abrir la sesión segura. Inténtalo de nuevo.');
