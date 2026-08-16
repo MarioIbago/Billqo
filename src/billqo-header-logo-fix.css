@@ -1,0 +1,45 @@
+/* Final mobile header alignment ---------------------------------------- */
+@media (max-width: 767px) {
+  .crystal-landing-header,
+  .crystal-privacy-public-header {
+    top: max(10px, env(safe-area-inset-top)) !important;
+    min-height: 72px !important;
+    padding: 8px 10px 8px 12px !important;
+    border-radius: 24px !important;
+    border: 1px solid rgba(255,255,255,.12) !important;
+    background: rgba(5,7,10,.86) !important;
+    box-shadow: 0 18px 48px rgba(0,0,0,.46), inset 0 1px 0 rgba(255,255,255,.055) !important;
+  }
+
+  .crystal-landing-header > .billqo-responsive-brand,
+  .crystal-privacy-public-header > .billqo-responsive-brand {
+    display: grid !important;
+    width: 52px !important;
+    min-width: 52px !important;
+    height: 52px !important;
+    place-items: center !important;
+    line-height: 0 !important;
+  }
+
+  .crystal-landing-header .billqo-responsive-brand img,
+  .crystal-privacy-public-header .billqo-responsive-brand img {
+    width: 38px !important;
+    max-width: 38px !important;
+    height: 38px !important;
+    object-fit: contain !important;
+    object-position: center !important;
+  }
+
+  .crystal-landing-menu-button,
+  .crystal-privacy-public-header .crystal-back-link {
+    min-width: 50px !important;
+    min-height: 50px !important;
+    margin-left: auto !important;
+    border-radius: 16px !important;
+  }
+
+  .crystal-privacy-public-header .crystal-back-link {
+    width: auto !important;
+    padding: 0 14px !important;
+  }
+}
