@@ -1,0 +1,353 @@
+/* Billqo control system -------------------------------------------------
+   One visual language for actions across workspace, billing, public pages and
+   modal flows. Primary actions are no longer white blocks: they use the same
+   dark glass material as secondary actions, with a brighter silver edge sweep.
+   Text actions stay text actions; icon-only actions are circular. */
+
+@property --billqo-action-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+:root {
+  --billqo-action-bg: rgba(8, 10, 14, .88);
+  --billqo-action-bg-hover: rgba(18, 21, 27, .94);
+  --billqo-action-line: rgba(255, 255, 255, .17);
+  --billqo-action-line-hover: rgba(255, 255, 255, .30);
+  --billqo-action-text: rgba(249, 250, 251, .94);
+  --billqo-action-muted: rgba(249, 250, 251, .66);
+  --billqo-action-shadow: 0 12px 34px rgba(0, 0, 0, .36), inset 0 1px 0 rgba(255, 255, 255, .075);
+}
+
+/* ---------------------------------------------------------------------
+   Standard text buttons: dark, rounded and never rectangular/white.
+   ------------------------------------------------------------------ */
+.crystal-button,
+.crystal-primary-button,
+.crystal-google-button,
+.crystal-landing-login-button,
+.crystal-landing-outline-button,
+.crystal-back-link,
+.crystal-report-form-actions > button {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 44px;
+  border: 1px solid var(--billqo-action-line) !important;
+  border-radius: 999px !important;
+  background: linear-gradient(180deg, rgba(18, 20, 25, .92), var(--billqo-action-bg)) !important;
+  color: var(--billqo-action-text) !important;
+  box-shadow: var(--billqo-action-shadow) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(135%);
+  backdrop-filter: blur(22px) saturate(135%);
+}
+
+.crystal-button:hover,
+.crystal-primary-button:hover,
+.crystal-google-button:hover,
+.crystal-landing-login-button:hover,
+.crystal-landing-outline-button:hover,
+.crystal-back-link:hover,
+.crystal-report-form-actions > button:hover {
+  border-color: var(--billqo-action-line-hover) !important;
+  background: linear-gradient(180deg, rgba(26, 29, 36, .96), var(--billqo-action-bg-hover)) !important;
+  color: #fff !important;
+}
+
+.crystal-button:active,
+.crystal-primary-button:active,
+.crystal-google-button:active,
+.crystal-landing-login-button:active,
+.crystal-landing-outline-button:active,
+.crystal-back-link:active,
+.crystal-report-form-actions > button:active {
+  transform: scale(.985) !important;
+}
+
+.crystal-button:disabled,
+.crystal-primary-button:disabled,
+.crystal-google-button:disabled,
+.crystal-landing-login-button:disabled,
+.crystal-landing-outline-button:disabled,
+.crystal-report-form-actions > button:disabled {
+  opacity: .46 !important;
+  cursor: not-allowed !important;
+}
+
+/* Primary actions match Sincronizar's dark material but get a continuous
+   silver trail around the edge when animations are enabled. */
+.crystal-button-primary,
+.crystal-primary-button,
+.crystal-google-button,
+.crystal-landing-outline-button,
+.crystal-report-form-actions > button,
+button[class*='bg-white/90'][class*='text-black'],
+button[class*='border-white/70'][class*='text-black'] {
+  position: relative !important;
+  isolation: isolate;
+  overflow: hidden;
+  border-color: rgba(255, 255, 255, .22) !important;
+  border-radius: 999px !important;
+  background: linear-gradient(180deg, rgba(20, 22, 27, .96), rgba(6, 8, 11, .94)) !important;
+  color: #f8fafc !important;
+  box-shadow:
+    0 13px 34px rgba(0, 0, 0, .42),
+    inset 0 1px 0 rgba(255, 255, 255, .10) !important;
+  text-shadow: none !important;
+}
+
+.crystal-button-primary::before,
+.crystal-primary-button::before,
+.crystal-google-button::before,
+.crystal-landing-outline-button::before,
+.crystal-report-form-actions > button::before,
+.crystal-mobile-add::before,
+button[class*='bg-white/90'][class*='text-black']::before,
+button[class*='border-white/70'][class*='text-black']::before {
+  content: '';
+  position: absolute;
+  z-index: 3;
+  inset: -1px;
+  padding: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--billqo-action-angle),
+    transparent 0deg,
+    transparent 244deg,
+    rgba(255, 255, 255, .04) 256deg,
+    rgba(226, 232, 240, .38) 267deg,
+    rgba(255, 255, 255, .98) 281deg,
+    rgba(203, 213, 225, .52) 294deg,
+    rgba(255, 255, 255, .07) 309deg,
+    transparent 325deg,
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  filter: drop-shadow(0 0 7px rgba(255, 255, 255, .22));
+  animation: billqo-action-sweep 4.8s linear infinite;
+}
+
+.crystal-button-primary:hover::before,
+.crystal-primary-button:hover::before,
+.crystal-google-button:hover::before,
+.crystal-landing-outline-button:hover::before,
+.crystal-report-form-actions > button:hover::before,
+.crystal-mobile-add:hover::before,
+button[class*='bg-white/90'][class*='text-black']:hover::before,
+button[class*='border-white/70'][class*='text-black']:hover::before {
+  animation-duration: 3.6s;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, .34));
+}
+
+@keyframes billqo-action-sweep {
+  to { --billqo-action-angle: 360deg; }
+}
+
+/* Secondary / ghost buttons use the same silhouette without pretending to be
+   a separate light theme. */
+.crystal-button-ghost {
+  border-color: rgba(255, 255, 255, .13) !important;
+  background: rgba(8, 10, 14, .76) !important;
+  color: rgba(249, 250, 251, .78) !important;
+  box-shadow: 0 9px 25px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255, 255, 255, .055) !important;
+}
+
+.crystal-button-danger {
+  border-color: rgba(255, 104, 111, .24) !important;
+  background: linear-gradient(180deg, rgba(35, 14, 17, .86), rgba(16, 8, 10, .92)) !important;
+  color: #ffb7bb !important;
+  border-radius: 999px !important;
+}
+
+/* ---------------------------------------------------------------------
+   Icon-only controls are circles rather than little squares.
+   ------------------------------------------------------------------ */
+.crystal-icon-button,
+.crystal-landing-menu-button,
+.crystal-mobile-header-menu,
+.crystal-row-actions button,
+[role='dialog'] button[aria-label='Cerrar'] {
+  border-radius: 999px !important;
+}
+
+.crystal-icon-button,
+.crystal-landing-menu-button,
+.crystal-mobile-header-menu {
+  width: 44px !important;
+  min-width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  padding: 0 !important;
+  place-items: center;
+  background: rgba(8, 10, 14, .80) !important;
+  border: 1px solid rgba(255, 255, 255, .14) !important;
+  color: rgba(255, 255, 255, .80) !important;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .32), inset 0 1px 0 rgba(255, 255, 255, .065) !important;
+}
+
+/* ---------------------------------------------------------------------
+   Controls that looked like white rectangular buttons on iPhone.
+   Search/selects remain controls, but use a compact dark capsule silhouette.
+   ------------------------------------------------------------------ */
+.crystal-select,
+.crystal-search {
+  min-height: 44px !important;
+  border-color: rgba(255, 255, 255, .12) !important;
+  border-radius: 999px !important;
+  background: rgba(7, 9, 13, .84) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .045), 0 8px 24px rgba(0, 0, 0, .20) !important;
+}
+
+.crystal-select select,
+.crystal-search input {
+  color: rgba(248, 250, 252, .90) !important;
+  background: transparent !important;
+}
+
+.crystal-select select { border-radius: 999px !important; }
+
+/* Menu rows are full-width touch targets, but still visibly rounded rather
+   than rectangular. */
+.crystal-more-menu button,
+.crystal-landing-menu button,
+.crystal-workspace-desktop-nav button {
+  min-height: 44px !important;
+  border-radius: 999px !important;
+}
+
+.crystal-more-menu button,
+.crystal-landing-menu button {
+  padding-inline: 14px !important;
+}
+
+/* Export format selectors and other option-buttons are intentionally roomier
+   than pills because they contain two lines, but they keep strongly rounded
+   corners and dark glass rather than square white tiles. */
+.crystal-export-options button,
+.crystal-motion-toggle,
+.crystal-report-form select,
+.crystal-report-form input,
+.crystal-report-form textarea {
+  border-color: rgba(255, 255, 255, .12) !important;
+  background: rgba(7, 9, 13, .84) !important;
+  color: rgba(248, 250, 252, .90) !important;
+}
+
+.crystal-export-options button { border-radius: 20px !important; }
+
+/* ---------------------------------------------------------------------
+   Add / edit movement modal. It has utility-class buttons rather than the
+   shared Crystal button classes, so normalize it structurally.
+   ------------------------------------------------------------------ */
+[role='dialog'][aria-labelledby='new-transaction-title'] button {
+  min-height: 40px;
+  border-radius: 999px !important;
+}
+
+[role='dialog'][aria-labelledby='new-transaction-title'] header button[aria-label='Cerrar'] {
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 !important;
+  background: rgba(6, 8, 11, .84) !important;
+  border-color: rgba(255, 255, 255, .13) !important;
+}
+
+[role='dialog'][aria-labelledby='new-transaction-title'] button[class*='bg-white/90'],
+[role='dialog'][aria-labelledby='new-transaction-title'] button[class*='border-white/70'] {
+  border-color: rgba(255, 255, 255, .22) !important;
+  background: linear-gradient(180deg, rgba(20, 22, 27, .96), rgba(6, 8, 11, .94)) !important;
+  color: #f8fafc !important;
+}
+
+/* Selected 1–5 impulse choices used a white square. Keep selection visible but
+   dark and rounded. */
+[role='dialog'][aria-labelledby='new-transaction-title'] button[class*='bg-white/90'][class*='text-black'] {
+  background: rgba(28, 31, 38, .96) !important;
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, .38) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .09), 0 7px 22px rgba(0, 0, 0, .30) !important;
+}
+
+/* The central mobile + is an action, not a white floating disc. */
+.crystal-mobile-add {
+  position: relative !important;
+  isolation: isolate;
+  overflow: hidden;
+  width: 56px !important;
+  height: 56px !important;
+  border: 1px solid rgba(255, 255, 255, .22) !important;
+  border-radius: 999px !important;
+  background: linear-gradient(180deg, rgba(21, 23, 28, .98), rgba(5, 7, 10, .98)) !important;
+  color: #f8fafc !important;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .48), inset 0 1px 0 rgba(255, 255, 255, .09) !important;
+}
+
+/* Keep pure text/link controls visually lightweight. */
+.crystal-text-button,
+.crystal-landing-text-button,
+.crystal-legal-link,
+.crystal-danger-link,
+.crystal-landing-footer-links button {
+  box-shadow: none !important;
+}
+
+/* Motion preference applies to the new trail too. The material remains dark
+   and polished when animation is disabled. */
+html[data-billqo-animations='off'] .crystal-button-primary::before,
+html[data-billqo-animations='off'] .crystal-primary-button::before,
+html[data-billqo-animations='off'] .crystal-google-button::before,
+html[data-billqo-animations='off'] .crystal-landing-outline-button::before,
+html[data-billqo-animations='off'] .crystal-report-form-actions > button::before,
+html[data-billqo-animations='off'] .crystal-mobile-add::before,
+html[data-billqo-animations='off'] button[class*='bg-white/90'][class*='text-black']::before,
+html[data-billqo-animations='off'] button[class*='border-white/70'][class*='text-black']::before {
+  animation: none !important;
+  --billqo-action-angle: 282deg;
+  opacity: .58;
+}
+
+@media (max-width: 767px) {
+  .crystal-button,
+  .crystal-primary-button,
+  .crystal-google-button,
+  .crystal-landing-login-button,
+  .crystal-landing-outline-button,
+  .crystal-back-link,
+  .crystal-report-form-actions > button {
+    min-height: 44px !important;
+  }
+
+  .crystal-button-small { min-height: 40px !important; }
+
+  .crystal-screen-heading > .crystal-button {
+    min-height: 44px !important;
+    padding-inline: 15px !important;
+    white-space: nowrap;
+  }
+
+  .crystal-more-menu {
+    padding: 10px !important;
+    gap: 5px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crystal-button-primary::before,
+  .crystal-primary-button::before,
+  .crystal-google-button::before,
+  .crystal-landing-outline-button::before,
+  .crystal-report-form-actions > button::before,
+  .crystal-mobile-add::before,
+  button[class*='bg-white/90'][class*='text-black']::before,
+  button[class*='border-white/70'][class*='text-black']::before {
+    animation-duration: 16s;
+  }
+}
