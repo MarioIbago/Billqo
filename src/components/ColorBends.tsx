@@ -27,7 +27,9 @@ export function ColorBends({
   intensity = 1.3,
   className = '',
 }: ColorBendsProps) {
-  const duration = Math.max(12, 34 / Math.max(speed, 0.05));
+  // Keep the background visibly moving even when there is no pointer input.
+  // The previous mapping made speed={0.2} last ~170s per cycle, which looked frozen.
+  const duration = Math.max(10, 6 / Math.max(speed, 0.05));
   const style = {
     '--bend-primary': color,
     '--bend-secondary': colorSecondary,
