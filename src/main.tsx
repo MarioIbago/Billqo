@@ -13,6 +13,7 @@ import './billqo-dark-default.css';
 import './billqo-black-grid.css';
 import './billqo-mobile-fixes.css';
 import './billqo-header-logo-fix.css';
+import './billqo-controls.css';
 
 // Apply the visual preference before React paints. Animations intentionally
 // default to off until the user enables them in Configuración.
