@@ -166,7 +166,7 @@ export const LandingPage: React.FC = () => {
         <main>
           <section className="crystal-landing-hero" aria-labelledby="landing-title">
             <div className="crystal-landing-hero-copy">
-              <h1 id="landing-title">Tu dinero, claro<br />y bajo tu control.</h1>
+              <h1 id="landing-title">Tus finanzas,<br />en cualquier lugar.</h1>
               <p>Tu información financiera, disponible en todos tus dispositivos de forma segura. Registra ingresos y gastos, crea presupuestos y entiende tus finanzas personales desde un solo lugar.</p>
 
               <div className="crystal-landing-hero-actions">
