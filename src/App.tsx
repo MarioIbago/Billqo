@@ -18,16 +18,16 @@ function BillqoBackdrop() {
   return (
     <div className="billqo-backdrop" aria-hidden="true">
       <ColorBends
-        color="#FFFFFF"
-        colorSecondary="#9CA3AF"
-        speed={0.2}
+        color="#F8FAFC"
+        colorSecondary="#64748B"
+        speed={0.28}
         frequency={1}
-        noise={0.15}
-        bandWidth={0.14}
+        noise={0.18}
+        bandWidth={0.16}
         rotation={90}
-        fadeTop={0.75}
+        fadeTop={0.72}
         iterations={1}
-        intensity={1.3}
+        intensity={1.45}
         className="billqo-backdrop-bends"
       />
       <DotField
@@ -38,12 +38,12 @@ function BillqoBackdrop() {
         cursorForce={0.10}
         bulgeOnly
         bulgeStrength={67}
-        glowRadius={160}
+        glowRadius={180}
         sparkle={false}
-        waveAmplitude={0}
-        gradientFrom="rgba(31, 41, 55, 0.18)"
-        gradientTo="rgba(148, 163, 184, 0.13)"
-        glowColor="rgba(75, 85, 99, 0.14)"
+        waveAmplitude={2.6}
+        gradientFrom="rgba(248, 250, 252, 0.24)"
+        gradientTo="rgba(148, 163, 184, 0.16)"
+        glowColor="rgba(226, 232, 240, 0.24)"
       />
     </div>
   );
