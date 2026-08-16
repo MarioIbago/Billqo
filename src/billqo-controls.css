@@ -1,5 +1,4 @@
-/* Keep the UI identical to commit a092835 except for button shape.
-   This file intentionally changes only border-radius. */
+/* Billqo visual accents layered on top of the a092835 UI. */
 
 button,
 .crystal-button,
@@ -16,4 +15,102 @@ button,
 .crystal-text-button,
 .crystal-landing-text-button {
   border-radius: 9999px !important;
+}
+
+:root {
+  --billqo-accent: #ff5f67;
+  --billqo-accent-soft: rgba(255, 95, 103, 0.16);
+  --billqo-accent-border: rgba(255, 95, 103, 0.48);
+  --billqo-accent-glow: rgba(255, 67, 80, 0.28);
+}
+
+/* Red accent for expenses and the active Movimientos state. */
+.crystal-transaction-icon.is-expense {
+  color: #ff737a !important;
+  background: rgba(118, 31, 36, 0.46) !important;
+  border-color: rgba(255, 95, 103, 0.18) !important;
+}
+
+.crystal-transaction-amount strong.is-expense,
+.crystal-chart-expense,
+.crystal-chart-legend .is-expense {
+  color: var(--billqo-accent) !important;
+  stroke: var(--billqo-accent) !important;
+}
+
+.crystal-mobile-nav > button.is-active,
+.crystal-workspace-desktop-nav > button.is-active {
+  color: #ff737a !important;
+}
+
+.crystal-mobile-nav > button.is-active svg,
+.crystal-workspace-desktop-nav > button.is-active svg {
+  color: #ff737a !important;
+  filter: drop-shadow(0 0 8px rgba(255, 95, 103, 0.24));
+}
+
+/* Central add action: white translucent circle, not a dark square. */
+.crystal-mobile-add {
+  width: 58px !important;
+  min-width: 58px !important;
+  height: 58px !important;
+  min-height: 58px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  border: 1px solid rgba(255, 255, 255, 0.72) !important;
+  background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(245,247,250,0.82)) !important;
+  color: #12151b !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.95) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+  backdrop-filter: blur(18px) saturate(145%);
+}
+
+.crystal-mobile-add:hover,
+.crystal-mobile-add:active {
+  background: rgba(255,255,255,0.88) !important;
+}
+
+/* Danger actions are intentionally red-tinted. */
+.crystal-button-danger,
+.crystal-signout-button,
+button[aria-label='Cerrar sesión'] {
+  border: 1px solid rgba(255, 104, 111, 0.52) !important;
+  background: linear-gradient(180deg, rgba(139, 37, 44, 0.78), rgba(91, 22, 28, 0.82)) !important;
+  color: #fff4f4 !important;
+  box-shadow: 0 10px 28px rgba(121, 20, 29, 0.30), inset 0 1px 0 rgba(255,255,255,0.10) !important;
+}
+
+.crystal-button-danger:hover,
+.crystal-signout-button:hover,
+button[aria-label='Cerrar sesión']:hover {
+  background: linear-gradient(180deg, rgba(158, 42, 49, 0.84), rgba(106, 25, 31, 0.88)) !important;
+  border-color: rgba(255, 139, 144, 0.62) !important;
+}
+
+/* Remove the boxed tile behind the Billqo mark. */
+.crystal-workspace-mark,
+.crystal-header-mark,
+.crystal-brand-mark,
+.crystal-landing-brand-mark {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Keep mobile sign-out visible, while desktop keeps its existing control. */
+.crystal-mobile-signout {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .crystal-mobile-signout {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 17px;
+    border-radius: 9999px !important;
+    font-weight: 700;
+  }
 }
