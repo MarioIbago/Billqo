@@ -1,4 +1,5 @@
 import { useCallback, useRef, type CSSProperties, type ReactNode } from 'react';
+import type { PointerEvent as ReactPointerEvent } from 'react';
 import './BorderGlow.css';
 
 export interface BorderGlowProps {
@@ -48,7 +49,7 @@ export default function BorderGlow({
 }: BorderGlowProps) {
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const handlePointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     const card = cardRef.current;
     if (!card) return;
     card.classList.add('is-pointer-steered');
