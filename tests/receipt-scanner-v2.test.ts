@@ -36,6 +36,7 @@ afterEach(() => {
   delete process.env.OPENROUTER_RECEIPT_MODEL;
   delete process.env.OPENROUTER_RECEIPT_PAID_MODEL;
   delete process.env.OPENROUTER_RECEIPT_FALLBACK_MODEL;
+  delete process.env.OPENROUTER_RECEIPT_ALLOW_FREE;
 });
 
 describe('receipt scanner v2', () => {
@@ -84,6 +85,105 @@ describe('receipt scanner v2', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const secondBody = JSON.parse(String((fetchMock.mock.calls[1][1] as RequestInit).body));
     expect(secondBody.model).toBe('google/gemini-2.5-flash');
+  });
+
+  it('repairs harmless schema drift instead of rejecting a useful vision result', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-key';
+    const looseResult = {
+      data: {
+        tipoDocumento: 'Factura',
+        esDocumentoFinanciero: 'sí',
+        tipo: 'gasto',
+        comercio: 'Café Prueba',
+        descripcion: 'Consumo',
+        total: '$1,234.50',
+        moneda: 'mxn',
+        fecha: '15/08/2026',
+        metodoPago: 'tarjeta de crédito',
+        categoria: 'comida',
+        tipoCosto: 'variable',
+        fijoVariable: 'variable',
+        necesidad: 'necesario',
+        impulso: '3',
+        confianza: '92%',
+        advertencias: 'Revisar propina',
+      },
+    };
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      model: 'google/gemini-2.5-flash-lite',
+      choices: [{ message: { content: JSON.stringify(looseResult) } }],
+    }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await scanReceiptImageV2({
+      image: jpegBuffer(),
+      mimeType: 'image/jpeg',
+      allowedCategories: ['Comida'],
+      preferredType: 'expense',
+    });
+
+    expect(result).toMatchObject({
+      type: 'expense',
+      merchant: 'Café Prueba',
+      description: 'Consumo',
+      amount: 1234.5,
+      currency: 'MXN',
+      date: '2026-08-15',
+      paymentMethod: 'Tarjeta Crédito',
+      category: 'Comida',
+      costType: 'Variable',
+      fixedVariable: 'Variable',
+      necessity: 'Necesario',
+      influence: 3,
+      confidence: 0.92,
+    });
+    expect(result.warnings).toContain('Revisar propina');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not use openrouter/free in production fallback unless explicitly enabled', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-key';
+    process.env.OPENROUTER_RECEIPT_FALLBACK_MODEL = 'openrouter/free';
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: { code: 404 } }), { status: 404 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(scanReceiptImageV2({
+      image: jpegBuffer(),
+      mimeType: 'image/jpeg',
+      allowedCategories: ['Comida'],
+    })).rejects.toMatchObject({ status: 502, code: 'AI_PROVIDER_ERROR' });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const models = fetchMock.mock.calls.map((call) => JSON.parse(String((call[1] as RequestInit).body)).model);
+    expect(models).not.toContain('openrouter/free');
+  });
+
+  it('can still opt into the free router for development or low-cost experimentation', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-key';
+    process.env.OPENROUTER_RECEIPT_FALLBACK_MODEL = 'openrouter/free';
+    process.env.OPENROUTER_RECEIPT_ALLOW_FREE = 'true';
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: 404 } }), { status: 404 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: 404 } }), { status: 404 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: 404 } }), { status: 404 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        model: 'openrouter/free-selected-model',
+        choices: [{ message: { content: JSON.stringify(validExpense()) } }],
+      }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await scanReceiptImageV2({
+      image: jpegBuffer(),
+      mimeType: 'image/jpeg',
+      allowedCategories: ['Comida'],
+    });
+
+    expect(result.amount).toBe(125.5);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    const fourthBody = JSON.parse(String((fetchMock.mock.calls[3][1] as RequestInit).body));
+    expect(fourthBody.model).toBe('openrouter/free');
   });
 
   it('does not misreport model compatibility failures as CONFIGURATION_ERROR', async () => {
