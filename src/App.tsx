@@ -3,9 +3,10 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Dashboard } from './Dashboard';
 import { AuthScreen } from './components/AuthScreen';
 import { ColorBends } from './components/ColorBends';
-import Ferrofluid from './components/Ferrofluid';
+import DotField from './components/DotField';
 import { LandingPage } from './components/LandingPage';
 import { PrivacyPage } from './components/PrivacyPage';
+import { SiteFooter } from './components/SiteFooter';
 import { TermsPage } from './components/TermsPage';
 import { usePersistentSession } from './lib/usePersistentSession';
 
@@ -39,36 +40,33 @@ export default function App() {
         aria-hidden="true"
         style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}
       >
-        <Ferrofluid
-          colors={['#f8fafc', '#a1a1aa', '#52525b']}
-          speed={0.22}
-          scale={1.35}
-          turbulence={0.78}
-          fluidity={0.18}
-          rimWidth={0.07}
-          sharpness={1.75}
-          shimmer={0.72}
-          glow={1.15}
-          opacity={0.72}
-          mouseInteraction
-          mouseStrength={0.9}
-          mouseRadius={0.42}
-          mouseDampening={0.16}
-          mixBlendMode="screen"
+        <DotField
+          dotRadius={1.5}
+          dotSpacing={14}
+          cursorRadius={500}
+          cursorForce={0.10}
+          bulgeOnly
+          bulgeStrength={67}
+          glowRadius={180}
+          sparkle={false}
+          waveAmplitude={2.6}
+          gradientFrom="rgba(248, 250, 252, 0.24)"
+          gradientTo="rgba(148, 163, 184, 0.16)"
+          glowColor="rgba(226, 232, 240, 0.24)"
         />
       </div>
       <HashRouter>
         <Routes>
-          <Route path="/" element={user ? <Navigate to="/app" replace /> : <LandingPage />} />
+          <Route path="/" element={user ? <Dashboard /> : <LandingPage />} />
           <Route
             path="/auth"
-            element={hasGoogleAuthCallback() || !user ? <AuthScreen /> : <Navigate to="/app" replace />}
+            element={hasGoogleAuthCallback() || !user ? <AuthScreen /> : <Navigate to="/" replace />}
           />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
-          <Route path="/app/*" element={user ? <Dashboard /> : <Navigate to="/auth" replace />} />
-          <Route path="*" element={<Navigate to={user ? '/app' : '/'} replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <SiteFooter />
       </HashRouter>
     </>
   );
