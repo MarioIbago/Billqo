@@ -6,6 +6,7 @@ import {installClientGuards} from './lib/clientGuards';
 import './index.css';
 import './mobile-polish.css';
 import './billqo-premium.css';
+import './billqo-interactions.css';
 
 // The local OAuth callback is registered on 127.0.0.1.  `localhost` and
 // `127.0.0.1` are different browser origins, so using both would make the
