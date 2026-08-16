@@ -3,6 +3,9 @@ import { ArrowLeft, Bot, FileSpreadsheet, ReceiptText, ShieldCheck, WalletCards 
 import { useNavigate } from 'react-router-dom';
 import { CuantlyBrand } from './CuantlyBrand';
 
+const CONTACT_EMAIL = 'mario.ibago@gmail.com';
+const LICENSE_URL = 'https://polyformproject.org/licenses/noncommercial/1.0.0';
+
 export const TermsPage: React.FC = () => {
   const navigate = useNavigate();
 
@@ -52,6 +55,14 @@ export const TermsPage: React.FC = () => {
             <ShieldCheck size={19} />
             <h2>Disponibilidad</h2>
             <p>Billqo depende de servicios externos como Google, Firebase, Vercel y el proveedor de IA configurado. Algunas funciones pueden verse temporalmente afectadas si alguno de esos servicios no está disponible.</p>
+          </section>
+
+          <section className="crystal-panel crystal-privacy-public-card">
+            <ShieldCheck size={19} />
+            <h2>Código y licencia</h2>
+            <p>
+              El código de Billqo se ofrece bajo la PolyForm Noncommercial License 1.0.0. Los usos no comerciales permitidos por esa licencia pueden usar, estudiar, modificar y redistribuir el software; el uso comercial requiere un permiso o licencia adicional del autor. Consulta los <a href={LICENSE_URL} target="_blank" rel="noreferrer">términos completos de la licencia</a> o escribe a <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> para solicitar autorización comercial.
+            </p>
           </section>
         </div>
 
