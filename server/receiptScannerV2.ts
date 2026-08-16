@@ -28,6 +28,8 @@ interface OpenRouterPayload {
   }>;
 }
 
+type JsonRecord = Record<string, unknown>;
+
 class ReceiptProviderFailure extends Error {
   constructor(
     public readonly status: number,
@@ -54,17 +56,18 @@ function configuredModels(): string[] {
 
   const requestedPaid = requestedModels.filter((model) => !isFreeModel(model));
   const requestedFree = requestedModels.filter(isFreeModel);
+  const allowFreeModels = process.env.OPENROUTER_RECEIPT_ALLOW_FREE?.trim().toLowerCase() === 'true';
 
-  // Keep known, current multimodal paid routes first so a stale environment
-  // override cannot make an unavailable free model the primary generation path.
-  // Explicit custom paid routes are still honored afterwards; explicitly
-  // configured free routes remain a last-resort fallback only.
+  // Vision receipt scanning is a production path. Keep current multimodal paid
+  // routes first and do not rely on the free router unless explicitly enabled:
+  // its pool changes over time and may temporarily have no endpoint satisfying
+  // the image/structured-output/privacy constraints of this request.
   return [...new Set([
     DEFAULT_PRIMARY_MODEL,
     DEFAULT_SECONDARY_MODEL,
     DEFAULT_TERTIARY_MODEL,
     ...requestedPaid,
-    ...requestedFree,
+    ...(allowFreeModels ? requestedFree : []),
   ])];
 }
 
@@ -119,6 +122,232 @@ function requestInstruction(preferredType: TransactionType | undefined, allowedC
   ].join(' ');
 }
 
+function isRecord(value: unknown): value is JsonRecord {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function firstValue(record: JsonRecord, keys: string[]): unknown {
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(record, key)) return record[key];
+  }
+  return undefined;
+}
+
+function unwrapCandidate(value: unknown): JsonRecord | undefined {
+  if (!isRecord(value)) return undefined;
+  for (const key of ['receipt', 'ticket', 'result', 'data', 'document']) {
+    const nested = value[key];
+    if (isRecord(nested)) return nested;
+  }
+  return value;
+}
+
+function normalizedToken(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, ' ');
+}
+
+function nullableString(value: unknown, maxLength: number): string | null {
+  if (typeof value !== 'string' && typeof value !== 'number') return null;
+  const text = String(value).trim();
+  return text ? text.slice(0, maxLength) : null;
+}
+
+function booleanValue(value: unknown): boolean | undefined {
+  if (typeof value === 'boolean') return value;
+  const token = normalizedToken(value);
+  if (['true', 'si', 'yes', '1'].includes(token)) return true;
+  if (['false', 'no', '0'].includes(token)) return false;
+  return undefined;
+}
+
+function documentTypeValue(value: unknown): 'ticket' | 'receipt' | 'invoice' | 'payment_proof' | 'other' | undefined {
+  const token = normalizedToken(value);
+  if (!token) return undefined;
+  if (['ticket', 'nota de venta', 'sales ticket'].includes(token)) return 'ticket';
+  if (['receipt', 'recibo'].includes(token)) return 'receipt';
+  if (['invoice', 'factura', 'cfdi'].includes(token)) return 'invoice';
+  if (['payment proof', 'payment proof receipt', 'comprobante de pago', 'comprobante pago', 'transfer proof', 'comprobante de transferencia'].includes(token)) return 'payment_proof';
+  if (['other', 'otro', 'unknown', 'desconocido'].includes(token)) return 'other';
+  return undefined;
+}
+
+function transactionTypeValue(value: unknown, preferredType: TransactionType | undefined): TransactionType {
+  const token = normalizedToken(value);
+  if (['income', 'ingreso', 'entrada', 'deposito', 'deposit'].includes(token)) return 'income';
+  if (['expense', 'gasto', 'egreso', 'compra', 'purchase'].includes(token)) return 'expense';
+  return preferredType ?? 'expense';
+}
+
+function numericAmount(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) && value > 0 ? value : null;
+  if (typeof value !== 'string') return null;
+
+  let text = value.trim().replace(/[^\d.,-]/g, '');
+  if (!text) return null;
+
+  const lastComma = text.lastIndexOf(',');
+  const lastDot = text.lastIndexOf('.');
+  if (lastComma >= 0 && lastDot >= 0) {
+    if (lastComma > lastDot) text = text.replace(/\./g, '').replace(',', '.');
+    else text = text.replace(/,/g, '');
+  } else if (lastComma >= 0) {
+    const decimals = text.length - lastComma - 1;
+    text = decimals === 1 || decimals === 2 ? text.replace(',', '.') : text.replace(/,/g, '');
+  }
+
+  const parsed = Number(text);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function currencyValue(value: unknown): string | null {
+  const text = nullableString(value, 12)?.toUpperCase().replace(/[^A-Z]/g, '') ?? '';
+  return /^[A-Z]{3}$/.test(text) ? text : null;
+}
+
+function dateValue(value: unknown): string | null {
+  const text = nullableString(value, 40);
+  if (!text) return null;
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+
+  const local = text.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  if (!local) return null;
+  const day = Number(local[1]);
+  const month = Number(local[2]);
+  if (day < 1 || day > 31 || month < 1 || month > 12) return null;
+  return `${local[3]}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function paymentMethodValue(value: unknown): 'Efectivo' | 'Tarjeta Débito' | 'Tarjeta Crédito' | 'Transferencia' | null {
+  const token = normalizedToken(value);
+  if (!token) return null;
+  if (token.includes('efectivo') || token === 'cash') return 'Efectivo';
+  if (token.includes('debito') || token.includes('debit')) return 'Tarjeta Débito';
+  if (token.includes('credito') || token.includes('credit')) return 'Tarjeta Crédito';
+  if (token.includes('transfer') || token.includes('spei')) return 'Transferencia';
+  return null;
+}
+
+function costTypeValue(value: unknown, type: TransactionType): 'Fijo' | 'Variable' | 'Discrecional' | 'Operativo' | 'Hormiga' | 'Ingreso' | null {
+  if (type === 'income') return 'Ingreso';
+  const token = normalizedToken(value);
+  if (token === 'fijo' || token === 'fixed') return 'Fijo';
+  if (token === 'variable') return 'Variable';
+  if (token === 'discrecional' || token === 'discretionary') return 'Discrecional';
+  if (token === 'operativo' || token === 'operational') return 'Operativo';
+  if (token === 'hormiga') return 'Hormiga';
+  return null;
+}
+
+function fixedVariableValue(value: unknown, costType: string | null, type: TransactionType): 'Fijo' | 'Variable' | null {
+  if (type === 'income') return null;
+  const token = normalizedToken(value);
+  if (token === 'fijo' || token === 'fixed') return 'Fijo';
+  if (token === 'variable') return 'Variable';
+  if (costType === 'Fijo') return 'Fijo';
+  if (costType === 'Variable' || costType === 'Discrecional' || costType === 'Operativo' || costType === 'Hormiga') return 'Variable';
+  return null;
+}
+
+function necessityValue(value: unknown, type: TransactionType): 'Necesario' | 'Innecesario' | null {
+  if (type === 'income') return null;
+  const token = normalizedToken(value);
+  if (['necesario', 'necessary', 'essential'].includes(token)) return 'Necesario';
+  if (['innecesario', 'unnecessary', 'nonessential', 'no necesario'].includes(token)) return 'Innecesario';
+  return null;
+}
+
+function influenceValue(value: unknown, type: TransactionType): 1 | 2 | 3 | 4 | 5 | null {
+  if (type === 'income') return null;
+  const parsed = typeof value === 'number' ? value : Number(String(value ?? '').trim());
+  if (!Number.isFinite(parsed)) return null;
+  const rounded = Math.round(parsed);
+  return rounded >= 1 && rounded <= 5 ? rounded as 1 | 2 | 3 | 4 | 5 : null;
+}
+
+function confidenceValue(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(String(value ?? '').trim().replace('%', ''));
+  if (!Number.isFinite(parsed)) return 0.35;
+  const normalized = parsed > 1 && parsed <= 100 ? parsed / 100 : parsed;
+  return Math.min(1, Math.max(0, normalized));
+}
+
+function warningValues(value: unknown): string[] {
+  const candidates = Array.isArray(value) ? value : typeof value === 'string' ? [value] : [];
+  return [...new Set(candidates
+    .map((warning) => nullableString(warning, 180))
+    .filter((warning): warning is string => Boolean(warning)))]
+    .slice(0, 6);
+}
+
+function normalizeReceiptCandidate(raw: string, preferredType: TransactionType | undefined): JsonRecord | undefined {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(normalizeJsonText(raw));
+  } catch {
+    return undefined;
+  }
+
+  const source = unwrapCandidate(parsed);
+  if (!source) return undefined;
+
+  const type = transactionTypeValue(firstValue(source, ['type', 'transactionType', 'transaction_type', 'tipo']), preferredType);
+  let documentType = documentTypeValue(firstValue(source, ['documentType', 'document_type', 'document', 'tipoDocumento', 'tipo_documento']));
+  const explicitFinancial = booleanValue(firstValue(source, ['isFinancialDocument', 'is_financial_document', 'financialDocument', 'esDocumentoFinanciero']));
+
+  const merchant = nullableString(firstValue(source, ['merchant', 'merchantName', 'merchant_name', 'store', 'vendor', 'seller', 'issuer', 'comercio', 'establecimiento', 'emisor', 'negocio']), 160);
+  const description = nullableString(firstValue(source, ['description', 'descripcion', 'descripción', 'concept', 'concepto', 'summary', 'resumen']), 200);
+  const amount = numericAmount(firstValue(source, ['amount', 'total', 'totalAmount', 'total_amount', 'grandTotal', 'grand_total', 'monto', 'importe', 'paidTotal', 'paid_total']));
+
+  if (!documentType && explicitFinancial === true && (amount !== null || merchant !== null)) documentType = 'receipt';
+  documentType ??= 'other';
+  const isFinancialDocument = explicitFinancial ?? documentType !== 'other';
+  const costType = costTypeValue(firstValue(source, ['costType', 'cost_type', 'tipoCosto', 'tipo_costo']), type);
+
+  return {
+    documentType,
+    isFinancialDocument,
+    type,
+    merchant,
+    description: description ?? merchant,
+    amount,
+    currency: currencyValue(firstValue(source, ['currency', 'currencyCode', 'currency_code', 'moneda'])),
+    date: dateValue(firstValue(source, ['date', 'transactionDate', 'transaction_date', 'purchaseDate', 'purchase_date', 'fecha'])),
+    paymentMethod: paymentMethodValue(firstValue(source, ['paymentMethod', 'payment_method', 'payment', 'method', 'metodoPago', 'métodoPago', 'metodo_pago'])),
+    category: nullableString(firstValue(source, ['category', 'categoria', 'categoría']), 120),
+    costType,
+    fixedVariable: fixedVariableValue(firstValue(source, ['fixedVariable', 'fixed_variable', 'fijoVariable', 'fijo_variable']), costType, type),
+    necessity: necessityValue(firstValue(source, ['necessity', 'necesidad']), type),
+    influence: influenceValue(firstValue(source, ['influence', 'influencia', 'impulse', 'impulso']), type),
+    confidence: confidenceValue(firstValue(source, ['confidence', 'confianza'])),
+    warnings: warningValues(firstValue(source, ['warnings', 'advertencias', 'notes', 'notas'])),
+  };
+}
+
+function parseReceiptWithRecovery(
+  raw: string,
+  allowedCategories: string[],
+  preferredType: TransactionType | undefined,
+): ReceiptScanResult {
+  try {
+    return parseReceiptModelResult(raw, allowedCategories);
+  } catch (error) {
+    // A correct non-financial classification must remain a hard user-facing
+    // validation result. Only schema/format drift from the model is repaired.
+    if (error instanceof AppError && error.code === 'VALIDATION_FAILED') throw error;
+
+    const normalized = normalizeReceiptCandidate(raw, preferredType);
+    if (!normalized) throw error;
+    return parseReceiptModelResult(JSON.stringify(normalized), allowedCategories);
+  }
+}
+
 async function requestModel(input: {
   image: Buffer;
   mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
@@ -159,10 +388,6 @@ async function requestModel(input: {
             ],
           },
         ],
-        // json_object is intentionally used instead of a strict provider-level
-        // json_schema. Zod still validates the response server-side, while this
-        // avoids excluding otherwise healthy vision providers that do not
-        // implement the exact same structured-output dialect.
         response_format: { type: 'json_object' },
         provider: {
           allow_fallbacks: true,
@@ -255,7 +480,7 @@ export async function scanReceiptImageV2(input: {
     try {
       const response = await requestModel({ ...input, model, route });
       try {
-        return parseReceiptModelResult(response.content, input.allowedCategories);
+        return parseReceiptWithRecovery(response.content, input.allowedCategories, input.preferredType);
       } catch (error) {
         if (error instanceof AppError && error.code === 'VALIDATION_FAILED') throw error;
         lastFailure = error;
@@ -269,9 +494,6 @@ export async function scanReceiptImageV2(input: {
       if (isCredentialFailure(error)) throw mapCredentialFailure(error);
       if (error instanceof ReceiptProviderFailure && error.status === 429) sawRateLimit = true;
       lastFailure = error;
-      // Model-specific 400/404/422 errors are recoverable here: another model
-      // can still process the same image, so do not misreport them as a global
-      // CONFIGURATION_ERROR.
     }
   }
 
