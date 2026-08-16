@@ -1,0 +1,269 @@
+/* Billqo dark default ---------------------------------------------------
+   Imported after billqo-glass.css on purpose. The animated React backdrop
+   remains global, but the application defaults to the Black Crystal palette. */
+
+:root {
+  color-scheme: dark;
+  --billqo-page: #050608;
+  --billqo-page-2: #0a0c10;
+  --billqo-ink: #f7f8fa;
+  --billqo-muted: rgba(239, 242, 247, .64);
+  --billqo-dim: rgba(239, 242, 247, .42);
+  --billqo-glass: rgba(15, 17, 22, .62);
+  --billqo-glass-strong: rgba(18, 20, 26, .78);
+  --billqo-glass-soft: rgba(10, 12, 16, .48);
+  --billqo-stroke: rgba(255, 255, 255, .09);
+  --billqo-stroke-strong: rgba(255, 255, 255, .16);
+  --billqo-highlight: rgba(255, 255, 255, .14);
+  --billqo-shadow: 0 26px 80px rgba(0, 0, 0, .48), inset 0 1px 0 rgba(255, 255, 255, .08);
+  --billqo-shadow-soft: 0 16px 48px rgba(0, 0, 0, .36), inset 0 1px 0 rgba(255, 255, 255, .06);
+  --workspace-bg: transparent;
+  --workspace-text: var(--billqo-ink);
+  --workspace-muted: var(--billqo-muted);
+  --workspace-dim: var(--billqo-dim);
+  --workspace-line: var(--billqo-stroke);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  background: var(--billqo-page) !important;
+  color: var(--billqo-ink) !important;
+}
+
+body { background: var(--billqo-page) !important; }
+
+/* Keep the React Bits-inspired backdrop clearly visible in night mode. */
+#root > .billqo-backdrop {
+  background:
+    radial-gradient(circle at 17% -3%, rgba(255, 255, 255, .11), transparent 34%),
+    radial-gradient(circle at 78% 26%, rgba(100, 116, 139, .18), transparent 42%),
+    radial-gradient(circle at 44% 88%, rgba(226, 232, 240, .06), transparent 40%),
+    linear-gradient(180deg, #050608 0%, #090b0f 52%, #030405 100%) !important;
+}
+
+.billqo-backdrop .billqo-color-bend {
+  opacity: calc(.38 * var(--bend-intensity)) !important;
+  filter: blur(64px) saturate(.42) !important;
+  mix-blend-mode: screen !important;
+}
+
+.billqo-backdrop .billqo-color-bend-a {
+  background: linear-gradient(90deg, transparent 2%, #475569 28%, #f8fafc 51%, #64748b 72%, transparent 94%) !important;
+}
+
+.billqo-backdrop .billqo-color-bend-b {
+  background: linear-gradient(90deg, transparent 4%, #1f2937 24%, #cbd5e1 52%, #475569 75%, transparent 94%) !important;
+}
+
+.billqo-backdrop .billqo-color-bend-c {
+  opacity: calc(.26 * var(--bend-intensity)) !important;
+  background: linear-gradient(90deg, transparent 5%, #334155 34%, #ffffff 58%, #64748b 78%, transparent 95%) !important;
+}
+
+.billqo-backdrop .billqo-color-bends-noise {
+  opacity: calc(var(--bend-noise) * .16) !important;
+  mix-blend-mode: screen !important;
+}
+
+.billqo-backdrop-dots {
+  opacity: .88 !important;
+  mix-blend-mode: screen !important;
+}
+
+.crystal-public-page,
+.crystal-app-shell,
+.crystal-workspace,
+.crystal-landing-page,
+.crystal-auth-page,
+.crystal-status-screen {
+  color: var(--billqo-ink) !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* Dark glass surfaces. */
+.crystal-workspace-header,
+.crystal-landing-header,
+.crystal-mobile-nav,
+.crystal-more-menu,
+.crystal-landing-menu,
+.crystal-privacy-public-header {
+  border: 1px solid rgba(255, 255, 255, .09) !important;
+  background: rgba(8, 10, 14, .74) !important;
+  box-shadow: 0 18px 54px rgba(0, 0, 0, .36), inset 0 1px 0 rgba(255, 255, 255, .07) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(124%) !important;
+  backdrop-filter: blur(30px) saturate(124%) !important;
+}
+
+.crystal-panel,
+.crystal-auth-card,
+.crystal-landing-sheet-card,
+.crystal-landing-feature,
+.crystal-landing-step,
+.crystal-landing-faq-item,
+.crystal-landing-report,
+.crystal-privacy-public-card,
+.crystal-privacy-note,
+.crystal-alert,
+.crystal-empty-state {
+  border: 1px solid rgba(255, 255, 255, .09) !important;
+  background: linear-gradient(145deg, rgba(20, 22, 28, .70), rgba(8, 10, 14, .54)) !important;
+  box-shadow: var(--billqo-shadow-soft) !important;
+  -webkit-backdrop-filter: blur(26px) saturate(122%) !important;
+  backdrop-filter: blur(26px) saturate(122%) !important;
+}
+
+.crystal-panel,
+.crystal-auth-card,
+.crystal-landing-sheet-card,
+.crystal-privacy-public-card {
+  box-shadow: var(--billqo-shadow) !important;
+}
+
+/* Restore readable typography after the light-glass layer. */
+.crystal-screen-heading h1,
+.crystal-landing-hero h1,
+.crystal-landing-section-copy h2,
+.crystal-landing-report-copy h2,
+.crystal-auth-copy h1,
+.crystal-privacy-public-intro h1,
+.crystal-panel h2,
+.crystal-panel h3,
+.crystal-landing-sheet-card h2,
+.crystal-landing-feature h3,
+.crystal-landing-step h3,
+.crystal-landing-faq-item summary,
+.crystal-workspace strong,
+.crystal-public-page h1,
+.crystal-public-page h2,
+.crystal-public-page h3,
+.crystal-public-page strong {
+  color: var(--billqo-ink) !important;
+}
+
+.crystal-screen-heading p,
+.crystal-panel-heading p,
+.crystal-landing-hero p,
+.crystal-landing-section-copy p,
+.crystal-landing-sheet-card p,
+.crystal-landing-feature p,
+.crystal-landing-step p,
+.crystal-landing-faq-item p,
+.crystal-landing-report-copy p,
+.crystal-auth-copy p,
+.crystal-privacy-public-intro > p,
+.crystal-privacy-public-card p,
+.crystal-privacy-public-card li,
+.crystal-empty-state p {
+  color: var(--billqo-muted) !important;
+}
+
+.crystal-kicker,
+.crystal-eyebrow,
+.crystal-panel small,
+.crystal-auth-meta,
+.crystal-landing-report-copy small,
+.crystal-transaction-copy small,
+.crystal-transaction-amount small {
+  color: var(--billqo-dim) !important;
+}
+
+/* Controls stay legible and tappable against the dark surfaces. */
+.crystal-button,
+.crystal-icon-button,
+.crystal-workspace-user,
+.crystal-select,
+.crystal-search,
+.crystal-text-button {
+  color: rgba(255, 255, 255, .82) !important;
+}
+
+.crystal-button-ghost,
+.crystal-icon-button,
+.crystal-workspace-user,
+.crystal-select,
+.crystal-search {
+  border-color: rgba(255, 255, 255, .10) !important;
+  background: rgba(255, 255, 255, .045) !important;
+}
+
+.crystal-button-ghost:hover,
+.crystal-icon-button:hover,
+.crystal-workspace-user:hover,
+.crystal-more-menu button:hover {
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, .18) !important;
+  background: rgba(255, 255, 255, .085) !important;
+}
+
+.crystal-button-primary,
+.crystal-primary-button {
+  border-color: rgba(255, 255, 255, .88) !important;
+  background: rgba(248, 250, 252, .94) !important;
+  color: #07080a !important;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255, 255, 255, .96) !important;
+}
+
+.crystal-button-primary svg,
+.crystal-primary-button svg { color: currentColor !important; }
+
+input,
+select,
+textarea,
+.crystal-settings-card input,
+.crystal-budget-editor input {
+  color: #f8fafc !important;
+  border-color: rgba(255, 255, 255, .10) !important;
+  background-color: rgba(255, 255, 255, .05) !important;
+}
+
+input::placeholder,
+textarea::placeholder { color: rgba(255, 255, 255, .25) !important; }
+option { color: #f8fafc; background: #0b0d11; }
+
+/* The billing workspace uses utility text-white classes. Its back control must
+   never disappear visually: it is the route back to the main dashboard. */
+.crystal-public-page header .crystal-button:first-child {
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, .18) !important;
+  background: rgba(10, 12, 16, .82) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .30) !important;
+}
+
+.crystal-more-menu {
+  z-index: 80 !important;
+}
+
+.crystal-more-menu button {
+  color: rgba(255, 255, 255, .76) !important;
+  background: transparent !important;
+}
+
+.crystal-mobile-nav button,
+.crystal-workspace-desktop-nav button {
+  color: rgba(255, 255, 255, .46) !important;
+}
+
+.crystal-mobile-nav button.is-active,
+.crystal-workspace-desktop-nav button.is-active {
+  color: #fff !important;
+}
+
+/* Light override had muted the moving border sweep. On dark glass, make the
+   continuous edge effect visible without requiring hover. */
+.crystal-panel::after,
+.crystal-auth-card::after,
+.crystal-landing-sheet-card::after,
+.crystal-privacy-public-card::after,
+.crystal-landing-feature::after,
+.crystal-landing-step::after {
+  opacity: .88 !important;
+  filter: drop-shadow(0 0 9px rgba(255, 255, 255, .32)) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .billqo-backdrop-dots { opacity: .72 !important; }
+}

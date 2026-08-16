@@ -39,8 +39,9 @@ afterEach(() => {
 });
 
 describe('receipt scanner v2', () => {
-  it('uses Gemini Flash Lite first with portable JSON mode and privacy-safe routing', async () => {
+  it('uses Gemini Flash Lite first even when a stale free model is configured', async () => {
     process.env.OPENROUTER_API_KEY = 'test-key';
+    process.env.OPENROUTER_RECEIPT_MODEL = 'google/gemma-3-4b-it:free';
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       model: 'google/gemini-2.5-flash-lite',
       choices: [{ message: { content: JSON.stringify(validExpense()) } }],
@@ -63,12 +64,12 @@ describe('receipt scanner v2', () => {
     expect(body.provider.require_parameters).toBeUndefined();
   });
 
-  it('continues after a model-specific 400 and accepts fenced JSON from the next model', async () => {
+  it('continues after a model-specific 400 and accepts fenced JSON from Gemini Flash', async () => {
     process.env.OPENROUTER_API_KEY = 'test-key';
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: 400 } }), { status: 400 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
-        model: 'google/gemma-3-4b-it',
+        model: 'google/gemini-2.5-flash',
         choices: [{ message: { content: `\`\`\`json\n${JSON.stringify(validExpense())}\n\`\`\`` } }],
       }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
@@ -82,7 +83,7 @@ describe('receipt scanner v2', () => {
     expect(result.category).toBe('Comida');
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const secondBody = JSON.parse(String((fetchMock.mock.calls[1][1] as RequestInit).body));
-    expect(secondBody.model).toBe('google/gemma-3-4b-it');
+    expect(secondBody.model).toBe('google/gemini-2.5-flash');
   });
 
   it('does not misreport model compatibility failures as CONFIGURATION_ERROR', async () => {

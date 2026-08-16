@@ -4,8 +4,8 @@ import { parseReceiptModelResult, RECEIPT_SYSTEM_PROMPT } from './receiptScanner
 
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 const DEFAULT_PRIMARY_MODEL = 'google/gemini-2.5-flash-lite';
-const DEFAULT_SECONDARY_MODEL = 'google/gemma-3-4b-it';
-const DEFAULT_FREE_MODEL = 'openrouter/free';
+const DEFAULT_SECONDARY_MODEL = 'google/gemini-2.5-flash';
+const DEFAULT_TERTIARY_MODEL = 'google/gemma-3-4b-it';
 
 interface ProviderError {
   code?: string | number;
@@ -40,22 +40,32 @@ class ReceiptProviderFailure extends Error {
   }
 }
 
-function configuredModels(): string[] {
-  const requestedPrimary = process.env.OPENROUTER_RECEIPT_MODEL?.trim();
-  const requestedSecondary = process.env.OPENROUTER_RECEIPT_PAID_MODEL?.trim();
-  const requestedFallback = process.env.OPENROUTER_RECEIPT_FALLBACK_MODEL?.trim();
+function isFreeModel(model: string): boolean {
+  const normalized = model.trim().toLowerCase();
+  return normalized === 'openrouter/free' || normalized.endsWith(':free');
+}
 
-  // Prefer a stable, inexpensive multimodal model first. Explicit environment
-  // overrides are still honored, while known-good defaults remain available as
-  // fallbacks if one configured route becomes unavailable.
+function configuredModels(): string[] {
+  const requestedModels = [
+    process.env.OPENROUTER_RECEIPT_MODEL?.trim(),
+    process.env.OPENROUTER_RECEIPT_PAID_MODEL?.trim(),
+    process.env.OPENROUTER_RECEIPT_FALLBACK_MODEL?.trim(),
+  ].filter((model): model is string => Boolean(model));
+
+  const requestedPaid = requestedModels.filter((model) => !isFreeModel(model));
+  const requestedFree = requestedModels.filter(isFreeModel);
+
+  // Keep known, current multimodal paid routes first so a stale environment
+  // override cannot make an unavailable free model the primary generation path.
+  // Explicit custom paid routes are still honored afterwards; explicitly
+  // configured free routes remain a last-resort fallback only.
   return [...new Set([
-    requestedPrimary || DEFAULT_PRIMARY_MODEL,
-    requestedSecondary || DEFAULT_SECONDARY_MODEL,
-    requestedFallback || DEFAULT_FREE_MODEL,
     DEFAULT_PRIMARY_MODEL,
     DEFAULT_SECONDARY_MODEL,
-    DEFAULT_FREE_MODEL,
-  ].filter(Boolean))];
+    DEFAULT_TERTIARY_MODEL,
+    ...requestedPaid,
+    ...requestedFree,
+  ])];
 }
 
 function providerCode(error: ProviderError | undefined): string {
