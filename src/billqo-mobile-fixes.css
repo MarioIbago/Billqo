@@ -1,0 +1,574 @@
+/* Billqo mobile / Safari polish ----------------------------------------
+   Final overrides for the Black Crystal UI. Keep this file imported last.
+   Mobile is the source of truth (390–430 CSS px) and interactive targets aim
+   for 44px+ while preserving the existing product behavior. */
+
+:root {
+  --billqo-control-bg: rgba(8, 10, 14, .88);
+  --billqo-control-bg-hover: rgba(255, 255, 255, .075);
+  --billqo-control-border: rgba(255, 255, 255, .14);
+  --billqo-control-border-strong: rgba(255, 255, 255, .24);
+  --billqo-control-text: #f6f7f8;
+  --billqo-control-muted: rgba(238, 241, 246, .52);
+}
+
+/* ---------------------------------------------------------------------
+   Motion preference. It defaults to off in JS, but all effects remain visible
+   as a static material. The toggle in Configuración can opt back in.
+   ------------------------------------------------------------------ */
+html[data-billqo-animations='off'] *,
+html[data-billqo-animations='off'] *::before,
+html[data-billqo-animations='off'] *::after {
+  scroll-behavior: auto !important;
+}
+
+html[data-billqo-animations='off'] .billqo-color-bend,
+html[data-billqo-animations='off'] .border-glow-card,
+html[data-billqo-animations='off'] .crystal-panel::after,
+html[data-billqo-animations='off'] .crystal-auth-card::after,
+html[data-billqo-animations='off'] .crystal-landing-sheet-card::after,
+html[data-billqo-animations='off'] .crystal-privacy-public-card::after,
+html[data-billqo-animations='off'] .crystal-landing-feature::after,
+html[data-billqo-animations='off'] .crystal-landing-step::after,
+html[data-billqo-animations='off'] .specular-button::before,
+html[data-billqo-animations='off'] .specular-button::after,
+html[data-billqo-animations='off'] .specular-button__fx {
+  animation: none !important;
+  transition-duration: 0s !important;
+}
+
+html[data-billqo-animations='off'] .specular-button__fx {
+  opacity: .22 !important;
+}
+
+html[data-billqo-animations='off'] .border-glow-card {
+  --cursor-angle: 45deg !important;
+}
+
+/* ---------------------------------------------------------------------
+   Dark glass: the BorderGlow wrappers were still using a light inline fill,
+   which washed out landing/auth cards on iPhone. Override that inline custom
+   property without removing the edge material.
+   ------------------------------------------------------------------ */
+.billqo-hero-glow.border-glow-card,
+.billqo-auth-glow.border-glow-card {
+  --card-bg: rgba(5, 7, 10, .78) !important;
+  border-color: rgba(255, 255, 255, .14) !important;
+  background: rgba(5, 7, 10, .78) !important;
+  box-shadow:
+    0 28px 78px rgba(0, 0, 0, .58),
+    inset 0 1px 0 rgba(255, 255, 255, .075) !important;
+}
+
+.billqo-hero-glow.border-glow-card::before,
+.billqo-auth-glow.border-glow-card::before {
+  --card-bg: rgba(5, 7, 10, .80) !important;
+}
+
+.crystal-auth-card,
+.crystal-landing-sheet-card,
+.crystal-landing-report,
+.crystal-privacy-public-card,
+.crystal-panel {
+  color: #f6f7f8 !important;
+}
+
+/* ---------------------------------------------------------------------
+   Safari/iOS form controls. Explicit appearance, fill and autofill handling
+   prevent WebKit from painting selects/search fields/textarea light gray.
+   ------------------------------------------------------------------ */
+.crystal-search,
+.crystal-select,
+.crystal-settings-card input,
+.crystal-budget-editor input,
+.crystal-public-page form input,
+.crystal-public-page form textarea,
+.crystal-public-page form select,
+.crystal-auth-page input,
+.crystal-auth-page textarea,
+.crystal-auth-page select {
+  color-scheme: dark;
+}
+
+.crystal-search,
+.crystal-select {
+  border-color: var(--billqo-control-border) !important;
+  background: linear-gradient(180deg, rgba(15, 17, 22, .86), rgba(7, 9, 13, .82)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05) !important;
+}
+
+.crystal-search input,
+.crystal-select select,
+.crystal-settings-card input,
+.crystal-budget-editor input,
+.crystal-public-page form input,
+.crystal-public-page form textarea,
+.crystal-public-page form select,
+.crystal-auth-page input,
+.crystal-auth-page textarea,
+.crystal-auth-page select {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  color: var(--billqo-control-text) !important;
+  -webkit-text-fill-color: var(--billqo-control-text) !important;
+  border-color: var(--billqo-control-border) !important;
+  background-color: var(--billqo-control-bg) !important;
+  background-image: none !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035) !important;
+  caret-color: #fff;
+}
+
+/* Inputs nested in a glass wrapper should not paint a second rectangle. */
+.crystal-search input,
+.crystal-select select {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.crystal-public-page form textarea {
+  resize: vertical;
+}
+
+.crystal-search input::placeholder,
+.crystal-settings-card input::placeholder,
+.crystal-budget-editor input::placeholder,
+.crystal-public-page form input::placeholder,
+.crystal-public-page form textarea::placeholder,
+.crystal-auth-page input::placeholder,
+.crystal-auth-page textarea::placeholder {
+  color: rgba(238, 241, 246, .34) !important;
+  -webkit-text-fill-color: rgba(238, 241, 246, .34) !important;
+  opacity: 1 !important;
+}
+
+.crystal-search input:-webkit-autofill,
+.crystal-settings-card input:-webkit-autofill,
+.crystal-budget-editor input:-webkit-autofill,
+.crystal-public-page form input:-webkit-autofill,
+.crystal-public-page form textarea:-webkit-autofill,
+.crystal-public-page form select:-webkit-autofill {
+  -webkit-text-fill-color: #f6f7f8 !important;
+  -webkit-box-shadow: 0 0 0 1000px #0a0c10 inset !important;
+  box-shadow: 0 0 0 1000px #0a0c10 inset !important;
+  transition: background-color 9999s ease-out 0s !important;
+}
+
+.crystal-select select option,
+.crystal-public-page form select option {
+  color: #f6f7f8 !important;
+  background: #090b0f !important;
+}
+
+/* ---------------------------------------------------------------------
+   Legal / privacy navigation: keep controls above decorative layers and give
+   every button a real mobile target.
+   ------------------------------------------------------------------ */
+.crystal-back-link,
+.crystal-legal-link,
+.crystal-auth-privacy-link,
+.crystal-privacy-public-footer button,
+.crystal-landing-footer button,
+.crystal-landing-menu button {
+  position: relative;
+  z-index: 12;
+  min-height: 44px;
+  pointer-events: auto !important;
+  touch-action: manipulation;
+}
+
+.crystal-privacy-public-footer {
+  position: relative;
+  z-index: 10;
+}
+
+/* ---------------------------------------------------------------------
+   Configuración > Animaciones portal.
+   ------------------------------------------------------------------ */
+.billqo-motion-settings {
+  display: flex !important;
+  min-height: 170px;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.billqo-motion-settings-copy {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.billqo-motion-settings-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  place-items: center;
+  color: rgba(255,255,255,.88);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 13px;
+  background: rgba(255,255,255,.055);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+.billqo-motion-settings h2 {
+  margin: 1px 0 6px;
+  color: #f6f7f8 !important;
+  font-size: 16px;
+  letter-spacing: -.025em;
+}
+
+.billqo-motion-settings p {
+  margin: 0;
+  color: rgba(238,241,246,.52) !important;
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.billqo-motion-switch {
+  display: flex;
+  min-height: 48px;
+  width: 100%;
+  align-items: center;
+  gap: 11px;
+  padding: 5px 12px 5px 6px;
+  color: rgba(238,241,246,.64);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 16px;
+  background: rgba(255,255,255,.035);
+  text-align: left;
+}
+
+.billqo-motion-switch > span {
+  position: relative;
+  display: block;
+  width: 48px;
+  height: 28px;
+  flex: 0 0 48px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.4);
+}
+
+.billqo-motion-switch > span::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #a9adb4;
+  box-shadow: 0 2px 7px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.45);
+  transition: transform 180ms ease, background 180ms ease;
+}
+
+.billqo-motion-switch.is-on {
+  color: #fff;
+  border-color: rgba(255,255,255,.22);
+  background: rgba(255,255,255,.075);
+}
+
+.billqo-motion-switch.is-on > span {
+  background: rgba(255,255,255,.18);
+}
+
+.billqo-motion-switch.is-on > span::after {
+  background: #f6f7f8;
+  transform: translateX(20px);
+}
+
+.billqo-motion-switch b {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+/* ---------------------------------------------------------------------
+   Mobile geometry.
+   ------------------------------------------------------------------ */
+@media (max-width: 767px) {
+  /* Restore the detached rounded rectangle header from the original mobile
+     direction instead of the edge-attached shape introduced by glass.css. */
+  .crystal-workspace-header {
+    position: sticky !important;
+    top: max(10px, env(safe-area-inset-top)) !important;
+    width: calc(100% - 24px) !important;
+    margin: 0 12px 12px !important;
+    overflow: visible;
+    border: 1px solid rgba(255,255,255,.12) !important;
+    border-radius: 24px !important;
+    background: rgba(6, 8, 11, .86) !important;
+    box-shadow: 0 18px 48px rgba(0,0,0,.46), inset 0 1px 0 rgba(255,255,255,.055) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(120%) !important;
+    backdrop-filter: blur(24px) saturate(120%) !important;
+  }
+
+  .crystal-workspace-header-inner {
+    min-height: 72px !important;
+    padding: 8px 10px 8px 12px !important;
+    align-items: center !important;
+  }
+
+  /* Use the actual <CuantlyMark> instead of the background replacement so the
+     visible pixels are genuinely centered inside a fixed touch target. */
+  .crystal-workspace-brand {
+    display: grid !important;
+    width: 52px !important;
+    min-width: 52px !important;
+    height: 52px !important;
+    place-items: center !important;
+    padding: 0 !important;
+    border-radius: 16px !important;
+    background: transparent !important;
+    background-image: none !important;
+  }
+
+  .crystal-workspace-brand > .crystal-workspace-mark {
+    display: grid !important;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+  }
+
+  .crystal-workspace-brand > span:last-child {
+    display: none !important;
+  }
+
+  .crystal-workspace-brand .cuantly-mark {
+    display: block !important;
+    width: 38px !important;
+    height: 38px !important;
+    object-fit: contain !important;
+    object-position: center !important;
+  }
+
+  .crystal-workspace-actions {
+    display: flex !important;
+    align-items: center !important;
+    padding: 0 !important;
+  }
+
+  .crystal-mobile-header-menu {
+    display: grid !important;
+    width: 50px !important;
+    height: 50px !important;
+    min-width: 50px !important;
+    min-height: 50px !important;
+    place-items: center !important;
+    margin: 0 !important;
+    color: rgba(255,255,255,.88) !important;
+    border-radius: 16px !important;
+    border-color: rgba(255,255,255,.14) !important;
+    background: rgba(255,255,255,.055) !important;
+  }
+
+  /* Main content starts below the detached sticky header and clears the iOS
+     home indicator + browser chrome more comfortably. */
+  .crystal-workspace-main {
+    padding-top: 20px !important;
+    padding-right: 16px !important;
+    padding-bottom: calc(126px + env(safe-area-inset-bottom)) !important;
+    padding-left: 16px !important;
+  }
+
+  /* Dashboard period selector: restore the compact dark pill rather than the
+     light native-looking rectangle seen in Safari. */
+  .crystal-screen-heading .crystal-heading-actions .crystal-select {
+    min-height: 42px !important;
+    border-radius: 14px !important;
+    background: rgba(9, 11, 15, .84) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.045), 0 9px 26px rgba(0,0,0,.24) !important;
+  }
+
+  .crystal-screen-heading .crystal-heading-actions .crystal-select select {
+    min-width: 132px !important;
+    height: 42px !important;
+    padding: 0 36px 0 13px !important;
+    color: rgba(255,255,255,.82) !important;
+    -webkit-text-fill-color: rgba(255,255,255,.82) !important;
+    font-size: 11px !important;
+  }
+
+  /* Search/card filters stack correctly on phones. The old two-column rule was
+     squeezing the search field to the point where Safari painted it poorly. */
+  .crystal-filter-panel {
+    padding: 12px !important;
+    border-radius: 20px !important;
+  }
+
+  .crystal-filter-panel > .grid {
+    grid-template-columns: 1fr !important;
+    gap: 9px !important;
+  }
+
+  .crystal-filter-panel > .grid .crystal-search,
+  .crystal-filter-panel > .grid .crystal-select {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+  }
+
+  .crystal-filter-panel > .grid .crystal-search {
+    padding: 0 12px !important;
+  }
+
+  .crystal-filter-panel > .grid .crystal-search input {
+    min-height: 42px !important;
+    font-size: 13px !important;
+  }
+
+  .crystal-filter-panel > .grid .crystal-select select {
+    height: 44px !important;
+    font-size: 12px !important;
+  }
+
+  .crystal-filter-panel > div[aria-label='Filtros rápidos de movimientos'] {
+    margin-right: -2px !important;
+    margin-left: -2px !important;
+    gap: 7px !important;
+    padding: 1px 2px 3px !important;
+    scroll-padding-inline: 2px;
+  }
+
+  .crystal-filter-panel > div[aria-label='Filtros rápidos de movimientos'] > button {
+    min-height: 36px !important;
+  }
+
+  /* Bottom navigation and center action: dark glass, proper safe area and a
+     56px target that no longer reads as a large white floating circle. */
+  .crystal-mobile-nav {
+    right: 12px !important;
+    bottom: max(12px, env(safe-area-inset-bottom)) !important;
+    left: 12px !important;
+    min-height: 72px !important;
+    padding: 7px 8px !important;
+    border-radius: 25px !important;
+    background: rgba(5, 7, 10, .88) !important;
+    box-shadow: 0 22px 58px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.055) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(120%) !important;
+    backdrop-filter: blur(24px) saturate(120%) !important;
+  }
+
+  .crystal-mobile-nav > button {
+    min-width: 44px !important;
+    min-height: 52px !important;
+    border-radius: 15px !important;
+  }
+
+  .crystal-mobile-add {
+    width: 56px !important;
+    min-width: 56px !important;
+    height: 56px !important;
+    min-height: 56px !important;
+    color: #f6f7f8 !important;
+    border: 1px solid rgba(255,255,255,.28) !important;
+    background: linear-gradient(180deg, rgba(33,36,42,.96), rgba(10,12,16,.98)) !important;
+    box-shadow: 0 12px 28px rgba(0,0,0,.48), inset 0 1px 0 rgba(255,255,255,.14) !important;
+  }
+
+  .crystal-mobile-add:active {
+    background: rgba(28,31,36,.98) !important;
+  }
+
+  /* More menu: comfortable padding, safe-area clearance and a closing row that
+     cannot be intercepted by the nav/backdrop layers. */
+  .crystal-more-menu {
+    right: 12px !important;
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 82px) !important;
+    width: min(292px, calc(100vw - 24px)) !important;
+    gap: 4px !important;
+    padding: 10px !important;
+    border-radius: 22px !important;
+    background: rgba(5, 7, 10, .96) !important;
+    box-shadow: 0 24px 68px rgba(0,0,0,.68), inset 0 1px 0 rgba(255,255,255,.055) !important;
+    overflow: hidden auto !important;
+    pointer-events: auto !important;
+  }
+
+  .crystal-more-menu button {
+    position: relative;
+    z-index: 3;
+    min-height: 48px !important;
+    width: 100% !important;
+    gap: 12px !important;
+    padding: 0 13px !important;
+    color: rgba(238,241,246,.68) !important;
+    border-radius: 14px !important;
+    pointer-events: auto !important;
+    touch-action: manipulation;
+  }
+
+  .crystal-more-menu button:last-child {
+    margin-top: 4px;
+    color: rgba(255,255,255,.88) !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    background: rgba(255,255,255,.045) !important;
+  }
+
+  /* Public report / auth forms get mobile-sized padding without turning their
+     fields into washed-out blocks. */
+  .crystal-landing-report {
+    padding: 24px 18px !important;
+    border-radius: 24px !important;
+  }
+
+  .crystal-public-page section.crystal-panel > form.grid,
+  .crystal-landing-report form {
+    gap: 12px !important;
+  }
+
+  .crystal-public-page section.crystal-panel > form.grid input,
+  .crystal-public-page section.crystal-panel > form.grid select,
+  .crystal-public-page section.crystal-panel > form.grid textarea,
+  .crystal-landing-report form input,
+  .crystal-landing-report form select,
+  .crystal-landing-report form textarea {
+    width: 100% !important;
+    min-height: 46px !important;
+    border-radius: 15px !important;
+    padding-right: 13px !important;
+    padding-left: 13px !important;
+    font-size: 13px !important;
+  }
+
+  .crystal-public-page section.crystal-panel > form.grid textarea,
+  .crystal-landing-report form textarea {
+    min-height: 116px !important;
+    padding-top: 12px !important;
+  }
+
+  .crystal-privacy-public-footer {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 10px !important;
+  }
+
+  .crystal-privacy-public-footer button {
+    min-height: 48px !important;
+    flex: 1 1 150px;
+  }
+
+  .billqo-motion-settings {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 390px) {
+  .crystal-workspace-header {
+    width: calc(100% - 20px) !important;
+    margin-right: 10px !important;
+    margin-left: 10px !important;
+  }
+
+  .crystal-workspace-main {
+    padding-right: 12px !important;
+    padding-left: 12px !important;
+  }
+
+  .crystal-mobile-nav {
+    right: 8px !important;
+    left: 8px !important;
+  }
+}
