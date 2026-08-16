@@ -1,0 +1,133 @@
+/* Targeted interface fixes layered after the restored 43fcbf0 visual system. */
+
+/* Native select menus must not inherit light text over the OS default light popup. */
+.crystal-select {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(17, 18, 21, 0.78) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(135%) !important;
+  backdrop-filter: blur(22px) saturate(135%) !important;
+}
+
+.crystal-select select {
+  color: rgba(255, 255, 255, 0.94) !important;
+  background-color: transparent !important;
+  color-scheme: dark;
+}
+
+.crystal-select select option,
+.crystal-select select optgroup {
+  color: #f7f8fa !important;
+  background: #111317 !important;
+}
+
+.crystal-select select option:checked {
+  color: #ffffff !important;
+  background: #2a2d32 !important;
+}
+
+/* Semantic financial accents: positive = green, expense = red, neutral = white. */
+.crystal-metric-grid > div:nth-child(1) strong {
+  color: #72d694 !important;
+}
+
+.crystal-metric-grid > div:nth-child(2) strong {
+  color: #ff737a !important;
+}
+
+.crystal-metric-grid > div:nth-child(3) strong {
+  color: rgba(255, 255, 255, 0.96) !important;
+}
+
+/* The top-header sign-out action is a destructive/account-exit action. */
+.crystal-workspace-actions .crystal-icon-button[aria-label='Cerrar sesión'] {
+  color: #ff7a82 !important;
+  border-color: rgba(255, 95, 103, 0.34) !important;
+  background: rgba(121, 26, 34, 0.22) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 183, 187, 0.08), 0 8px 24px rgba(95, 20, 27, 0.12) !important;
+}
+
+.crystal-workspace-actions .crystal-icon-button[aria-label='Cerrar sesión']:hover {
+  color: #ffb0b5 !important;
+  border-color: rgba(255, 122, 130, 0.56) !important;
+  background: rgba(139, 31, 40, 0.32) !important;
+}
+
+/* Balance privacy toggle. It is inserted next to the existing label via a React portal. */
+.crystal-balance-header > div:first-child > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.billqo-balance-visibility {
+  display: inline-flex;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  align-items: center;
+  justify-content: center;
+  margin: -4px 0 -4px 1px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 9px;
+  color: rgba(255, 255, 255, 0.52);
+  background: rgba(255, 255, 255, 0.045);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  backdrop-filter: blur(14px) saturate(125%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+
+.billqo-balance-visibility:hover {
+  color: rgba(255, 255, 255, 0.92);
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.billqo-balance-visibility:active {
+  transform: scale(0.96);
+}
+
+.billqo-balance-visibility:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.58);
+  outline-offset: 2px;
+}
+
+html.billqo-balance-hidden .crystal-balance-header > div:first-child > strong {
+  position: relative;
+  color: transparent !important;
+  text-shadow: none !important;
+  user-select: none;
+}
+
+html.billqo-balance-hidden .crystal-balance-header > div:first-child > strong::after {
+  content: '••••';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 0.72em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  transform: translateY(-50%);
+}
+
+/* Privacy and Terms intentionally keep the exact 43fcbf0 visual backdrop. */
+html.billqo-legal-route .ferrofluid-container {
+  display: none !important;
+}
+
+@media (max-width: 767px) {
+  .billqo-balance-visibility {
+    width: 28px;
+    height: 28px;
+    flex-basis: 28px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .billqo-balance-visibility {
+    transition: none;
+  }
+}
