@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import {Analytics} from '@vercel/analytics/react';
 import App from './App.tsx';
 import {installClientGuards} from './lib/clientGuards';
+import {installAnimationPreference} from './lib/animationPreference';
 import './index.css';
 import './mobile-polish.css';
 import './billqo-premium.css';
@@ -10,6 +11,11 @@ import './billqo-interactions.css';
 import './billqo-glass.css';
 import './billqo-dark-default.css';
 import './billqo-black-grid.css';
+import './billqo-mobile-fixes.css';
+
+// Apply the visual preference before React paints. Animations intentionally
+// default to off until the user enables them in Configuración.
+installAnimationPreference();
 
 // The local OAuth callback is registered on 127.0.0.1.  `localhost` and
 // `127.0.0.1` are different browser origins, so using both would make the
