@@ -1,0 +1,158 @@
+/* Final scoped UI requests: semantic finance colors, visible danger sign-out, privacy mask, shared footer. */
+
+/* Keep only the shared footer rendered from App; LandingPage's legacy footer is replaced globally. */
+.crystal-landing-footer {
+  display: none !important;
+}
+
+/* Header sign-out: intentionally red-tinted and immediately recognizable. */
+.crystal-workspace-actions .crystal-icon-button[aria-label='Cerrar sesión'] {
+  color: #ff8a91 !important;
+  border-color: rgba(255, 104, 113, 0.48) !important;
+  background: linear-gradient(180deg, rgba(143, 31, 39, 0.42), rgba(101, 22, 29, 0.30)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 188, 192, 0.10), 0 9px 26px rgba(111, 18, 27, 0.18) !important;
+}
+
+.crystal-workspace-actions .crystal-icon-button[aria-label='Cerrar sesión']:hover {
+  color: #ffd0d3 !important;
+  border-color: rgba(255, 133, 141, 0.68) !important;
+  background: linear-gradient(180deg, rgba(164, 38, 47, 0.54), rgba(119, 24, 33, 0.40)) !important;
+}
+
+/* Dashboard metric semantics: labels and values use the same color language. */
+.crystal-metric-grid > div:nth-child(1) > span,
+.crystal-metric-grid > div:nth-child(1) > strong {
+  color: #72d694 !important;
+}
+
+.crystal-metric-grid > div:nth-child(2) > span,
+.crystal-metric-grid > div:nth-child(2) > strong {
+  color: #ff737a !important;
+}
+
+.crystal-metric-grid > div:nth-child(3) > span,
+.crystal-metric-grid > div:nth-child(3) > strong {
+  color: rgba(255, 255, 255, 0.96) !important;
+}
+
+/* Public-space privacy mask: use the exact requested *** replacement. */
+html.billqo-balance-hidden .crystal-balance-header > div:first-child > strong::after {
+  content: '***' !important;
+  letter-spacing: 0.12em !important;
+}
+
+/* Shared footer appears after every routed surface. */
+.billqo-site-footer {
+  position: relative;
+  z-index: 4;
+  width: min(1180px, calc(100% - 32px));
+  min-height: 72px;
+  margin: 28px auto 30px;
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(20, 21, 24, 0.76), rgba(8, 9, 11, 0.70));
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  -webkit-backdrop-filter: blur(28px) saturate(140%);
+  backdrop-filter: blur(28px) saturate(140%);
+}
+
+.billqo-site-footer-brand {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+}
+
+.billqo-site-footer-links {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  color: rgba(255, 255, 255, 0.54);
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+.billqo-site-footer-links a,
+.billqo-site-footer-links button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  color: rgba(255, 255, 255, 0.70);
+  background: transparent;
+  text-decoration: none;
+  font: inherit;
+  transition: color 150ms ease;
+}
+
+.billqo-site-footer-links a:hover,
+.billqo-site-footer-links button:hover {
+  color: #ffffff;
+}
+
+.billqo-site-footer-github {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.76);
+  background: rgba(255, 255, 255, 0.045);
+  text-decoration: none;
+  transition: color 150ms ease, background 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+
+.billqo-site-footer-github:hover {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.09);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 767px) {
+  .billqo-site-footer {
+    width: min(100% - 20px, 700px);
+    grid-template-columns: 1fr auto;
+    margin-top: 20px;
+    margin-bottom: calc(104px + max(10px, env(safe-area-inset-bottom)));
+    padding: 16px;
+    border-radius: 19px;
+  }
+
+  .billqo-site-footer-brand {
+    justify-self: start;
+  }
+
+  .billqo-site-footer-links {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: flex-start;
+    gap: 9px 13px;
+    font-size: 11px;
+  }
+
+  .billqo-site-footer-github {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .billqo-site-footer-links a,
+  .billqo-site-footer-links button,
+  .billqo-site-footer-github {
+    transition: none;
+  }
+}
