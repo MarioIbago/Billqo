@@ -42,7 +42,7 @@ body,
     linear-gradient(180deg, #010203 0%, #030405 52%, #000101 100%) !important;
 }
 
-/* Red accent for expenses and the active Movimientos state. */
+/* Red accent for expenses and the active navigation state. */
 .crystal-transaction-icon.is-expense {
   color: #ff737a !important;
   background: rgba(118, 31, 36, 0.46) !important;
@@ -67,7 +67,7 @@ body,
   filter: drop-shadow(0 0 8px rgba(255, 95, 103, 0.24));
 }
 
-/* Central add action: white translucent circle, not a dark square. */
+/* Central add action: translucent white circle with an explicitly dark plus. */
 .crystal-mobile-add {
   width: 58px !important;
   min-width: 58px !important;
@@ -75,17 +75,23 @@ body,
   min-height: 58px !important;
   padding: 0 !important;
   border-radius: 50% !important;
-  border: 1px solid rgba(255, 255, 255, 0.72) !important;
-  background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(245,247,250,0.82)) !important;
-  color: #12151b !important;
-  box-shadow: 0 12px 30px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.95) !important;
-  -webkit-backdrop-filter: blur(18px) saturate(145%);
-  backdrop-filter: blur(18px) saturate(145%);
+  border: 1px solid rgba(255, 255, 255, 0.62) !important;
+  background: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(245,247,250,0.68)) !important;
+  color: #080a0d !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.76) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(138%);
+  backdrop-filter: blur(18px) saturate(138%);
+}
+
+.crystal-mobile-add svg {
+  color: #080a0d !important;
+  stroke: #080a0d !important;
 }
 
 .crystal-mobile-add:hover,
 .crystal-mobile-add:active {
-  background: rgba(255,255,255,0.88) !important;
+  background: rgba(255,255,255,0.78) !important;
+  color: #050608 !important;
 }
 
 /* Danger actions are intentionally red-tinted. */
@@ -105,6 +111,20 @@ button[aria-label='Cerrar sesión']:hover {
   border-color: rgba(255, 139, 144, 0.62) !important;
 }
 
+/* Errors use the same red language without turning ordinary cards red. */
+.crystal-alert-error {
+  border-color: rgba(255, 95, 103, 0.34) !important;
+  background: rgba(121, 26, 34, 0.20) !important;
+  color: #ffb4b8 !important;
+  box-shadow: 0 10px 30px rgba(93, 15, 23, 0.14) !important;
+}
+
+.crystal-status-error .crystal-status-icon {
+  color: #ff737a !important;
+  border-color: rgba(255, 95, 103, 0.30) !important;
+  background: rgba(121, 26, 34, 0.22) !important;
+}
+
 /* Remove the boxed tile behind the Billqo mark. */
 .crystal-workspace-mark,
 .crystal-header-mark,
@@ -115,20 +135,35 @@ button[aria-label='Cerrar sesión']:hover {
   box-shadow: none !important;
 }
 
-/* Keep mobile sign-out visible, while desktop keeps its existing control. */
+/* Keep mobile sign-out visible above the bottom navigation on Movimientos. */
 .crystal-mobile-signout {
   display: none;
 }
 
 @media (max-width: 760px) {
   .crystal-mobile-signout {
+    position: fixed;
+    z-index: 74;
+    left: 50%;
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 90px);
     display: inline-flex;
+    min-width: 170px;
+    min-height: 50px;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    min-height: 44px;
-    padding: 0 17px;
+    gap: 9px;
+    padding: 0 20px;
     border-radius: 9999px !important;
-    font-weight: 700;
+    font-size: 14px;
+    font-weight: 750;
+    letter-spacing: -0.01em;
+    transform: translateX(-50%);
+    -webkit-backdrop-filter: blur(18px) saturate(130%);
+    backdrop-filter: blur(18px) saturate(130%);
+    touch-action: manipulation;
+  }
+
+  .crystal-mobile-signout svg {
+    flex: 0 0 auto;
   }
 }
