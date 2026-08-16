@@ -1,0 +1,19 @@
+.text-type {
+  display: inline-block;
+  white-space: pre-wrap;
+}
+
+.text-type__cursor {
+  display: inline-block;
+  margin-left: .18em;
+  animation: billqo-text-cursor .8s steps(1, end) infinite;
+}
+
+@keyframes billqo-text-cursor {
+  0%, 48% { opacity: 1; }
+  49%, 100% { opacity: .15; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .text-type__cursor { animation: none; }
+}

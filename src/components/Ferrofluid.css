@@ -1,0 +1,22 @@
+.ferrofluid-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ferrofluid-container canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: .82;
+}
+
+@media (max-width: 767px) {
+  .ferrofluid-container canvas { opacity: .68; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ferrofluid-container canvas { opacity: .48; }
+}

@@ -1,0 +1,16 @@
+.decrypted-text {
+  display: inline-block;
+  white-space: pre-wrap;
+}
+
+.billqo-decrypted-encrypted {
+  opacity: 0.48;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.14);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .billqo-decrypted-encrypted {
+    opacity: 1;
+    text-shadow: none;
+  }
+}

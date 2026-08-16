@@ -24,7 +24,10 @@ import {
 import { useNavigate } from 'react-router-dom';
 import '../landing-seo.css';
 import { CuantlyBrand } from './CuantlyBrand';
+import DecryptedText from './DecryptedText';
 import { PublicReportForm } from './PublicReportForm';
+import SpecularButton from './SpecularButton';
+import TextType from './TextType';
 
 const GITHUB_PROFILE_URL = 'https://github.com/MarioIbago';
 const CONTACT_EMAIL = 'mario.ibago@gmail.com';
@@ -167,14 +170,38 @@ export const LandingPage: React.FC = () => {
         <main>
           <section className="crystal-landing-hero" aria-labelledby="landing-title">
             <div className="crystal-landing-hero-copy">
-              <h1 id="landing-title">Tu dinero, claro<br />y bajo tu control.</h1>
+              <h1 id="landing-title">
+                <DecryptedText
+                  text={'Tus finanzas\nen cualquier lugar.'}
+                  speed={30}
+                  sequential
+                  revealDirection="start"
+                  animateOn="view"
+                  encryptedClassName="billqo-decrypted-encrypted"
+                />
+              </h1>
               <p>Tu información financiera, disponible en todos tus dispositivos de forma segura. Registra ingresos y gastos, crea presupuestos y entiende tus finanzas personales desde un solo lugar.</p>
 
               <div className="crystal-landing-hero-actions">
-                <button type="button" className="crystal-landing-primary-button" onClick={openAuth}>
+                <SpecularButton
+                  size="lg"
+                  radius={18}
+                  tint="#17191d"
+                  tintOpacity={0.94}
+                  blur={20}
+                  textColor="#ffffff"
+                  lineColor="#ffffff"
+                  baseColor="#6b7280"
+                  intensity={1}
+                  speed={0.35}
+                  followMouse
+                  autoAnimate
+                  className="billqo-specular-landing"
+                  onClick={openAuth}
+                >
                   Comenzar con Google
                   <ArrowRight size={18} />
-                </button>
+                </SpecularButton>
                 <button type="button" className="crystal-landing-text-button" onClick={() => scrollTo('funciones')}>
                   Ver funciones
                   <ArrowDown size={16} />
@@ -201,7 +228,17 @@ export const LandingPage: React.FC = () => {
 
           <section id="funciones" className="crystal-landing-section crystal-landing-features" aria-labelledby="features-title">
             <div className="crystal-landing-section-copy crystal-landing-feature-heading">
-              <h2 id="features-title">Tus finanzas personales, en un solo lugar.</h2>
+              <TextType
+                as="h2"
+                id="features-title"
+                className="billqo-text-type-heading"
+                text="Tus finanzas personales, en un solo lugar."
+                typingSpeed={24}
+                initialDelay={100}
+                loop={false}
+                showCursor={false}
+                startOnVisible
+              />
               <p>Controla gastos, ingresos y presupuestos; analiza tus hábitos, organiza tickets y conserva tus facturas sin perder la propiedad de tus datos.</p>
             </div>
 
@@ -220,7 +257,17 @@ export const LandingPage: React.FC = () => {
 
           <section id="como-funciona" className="crystal-landing-section crystal-landing-how" aria-labelledby="how-it-works-title">
             <div className="crystal-landing-section-copy">
-              <h2 id="how-it-works-title">Así de simple.</h2>
+              <TextType
+                as="h2"
+                id="how-it-works-title"
+                className="billqo-text-type-heading"
+                text="Así de simple."
+                typingSpeed={34}
+                initialDelay={80}
+                loop={false}
+                showCursor={false}
+                startOnVisible
+              />
               <p>La plataforma separa la autenticación de tus registros financieros para que puedas tener un espacio propio, claro y fácil de mantener.</p>
             </div>
 
