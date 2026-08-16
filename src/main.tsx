@@ -2,11 +2,13 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import {Analytics} from '@vercel/analytics/react';
 import App from './App.tsx';
+import {InterfacePrivacyControls} from './components/InterfacePrivacyControls';
 import {installClientGuards} from './lib/clientGuards';
 import './index.css';
 import './mobile-polish.css';
 import './billqo-premium.css';
 import './billqo-interactions.css';
+import './billqo-interface-fixes.css';
 
 // The local OAuth callback is registered on 127.0.0.1.  `localhost` and
 // `127.0.0.1` are different browser origins, so using both would make the
@@ -31,6 +33,7 @@ if (mustUseCanonicalLocalOrigin) {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <App />
+      <InterfacePrivacyControls />
       <Analytics />
     </StrictMode>,
   );
