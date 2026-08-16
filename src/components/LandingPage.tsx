@@ -26,8 +26,8 @@ import '../landing-seo.css';
 import { CuantlyBrand } from './CuantlyBrand';
 import { PublicReportForm } from './PublicReportForm';
 
-const GITHUB_PROFILE_URL = 'https://github.com/marioibarrag';
-const CONTACT_EMAIL = 'juanter@gmail.com';
+const GITHUB_PROFILE_URL = 'https://github.com/MarioIbago';
+const CONTACT_EMAIL = 'mario.ibago@gmail.com';
 
 const howItWorks = [
   {
@@ -264,14 +264,14 @@ export const LandingPage: React.FC = () => {
         <footer className="crystal-landing-footer">
           <CuantlyBrand compact />
           <div className="crystal-landing-footer-links" aria-label="Enlaces de Billqo">
-            <span>Creado por Mario Ibarra G</span>
+            <span>Creado por Mario Ibarra Gómez</span>
             <a href={GITHUB_PROFILE_URL} target="_blank" rel="noreferrer">GitHub <ExternalLink size={13} /></a>
             <a href={`mailto:${CONTACT_EMAIL}`}><Mail size={13} />{CONTACT_EMAIL}</a>
-            <a href="https://opensource.org/license/mit" target="_blank" rel="noreferrer">Licencia MIT <ExternalLink size={13} /></a>
+            <a href="https://polyformproject.org/licenses/noncommercial/1.0.0" target="_blank" rel="noreferrer">Licencia no comercial <ExternalLink size={13} /></a>
             <button type="button" onClick={openPrivacy}>Privacidad</button>
             <button type="button" onClick={openTerms}>Términos</button>
           </div>
-          <a className="crystal-landing-footer-github" href={GITHUB_PROFILE_URL} target="_blank" rel="noreferrer" aria-label="GitHub de Mario Ibarra G">
+          <a className="crystal-landing-footer-github" href={GITHUB_PROFILE_URL} target="_blank" rel="noreferrer" aria-label="GitHub de MarioIbago">
             <Github size={18} />
           </a>
         </footer>

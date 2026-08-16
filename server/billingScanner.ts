@@ -3,7 +3,9 @@ import type { BillingTicketScanResult } from '../src/billingTypes';
 import { errors } from './errors';
 
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
-const DEFAULT_MODEL = 'google/gemini-2.5-flash-lite';
+const DEFAULT_PRIMARY_MODEL = 'google/gemini-2.5-flash-lite';
+const DEFAULT_SECONDARY_MODEL = 'google/gemini-2.5-flash';
+const DEFAULT_TERTIARY_MODEL = 'google/gemma-3-4b-it';
 
 const identifierSchema = z.object({
   key: z.string().trim().min(1).max(50),
@@ -28,44 +30,6 @@ const scanSchema = z.object({
   warnings: z.array(z.string().trim().min(1).max(180)).max(8),
 }).strict();
 
-const BILLING_SCAN_SCHEMA = {
-  type: 'object',
-  additionalProperties: false,
-  properties: {
-    merchant: { type: ['string', 'null'], maxLength: 160 },
-    issuerRfc: { type: ['string', 'null'], maxLength: 13 },
-    date: { type: ['string', 'null'], pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
-    time: { type: ['string', 'null'], pattern: '^\\d{2}:\\d{2}(?::\\d{2})?$' },
-    total: { type: ['number', 'null'], minimum: 0 },
-    subtotal: { type: ['number', 'null'], minimum: 0 },
-    iva: { type: ['number', 'null'], minimum: 0 },
-    currency: { type: ['string', 'null'], pattern: '^[A-Z]{3}$' },
-    paymentMethod: { type: ['string', 'null'], maxLength: 80 },
-    cardLast4: { type: ['string', 'null'], pattern: '^\\d{4}$' },
-    identifiers: {
-      type: 'array',
-      maxItems: 12,
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        properties: {
-          key: { type: 'string', maxLength: 50 },
-          value: { type: 'string', maxLength: 180 },
-        },
-        required: ['key', 'value'],
-      },
-    },
-    invoiceUrl: { type: ['string', 'null'], maxLength: 500 },
-    qrData: { type: ['string', 'null'], maxLength: 2000 },
-    confidence: { type: 'number', minimum: 0, maximum: 1 },
-    warnings: { type: 'array', maxItems: 8, items: { type: 'string', maxLength: 180 } },
-  },
-  required: [
-    'merchant', 'issuerRfc', 'date', 'time', 'total', 'subtotal', 'iva', 'currency',
-    'paymentMethod', 'cardLast4', 'identifiers', 'invoiceUrl', 'qrData', 'confidence', 'warnings',
-  ],
-} as const;
-
 const BILLING_SYSTEM_PROMPT = [
   'Analiza exclusivamente un ticket, recibo o comprobante de compra para Billqo.',
   'El objetivo es organizar la compra y conservar los datos que podrían servir para solicitar una factura posteriormente; NO generes ni simules una factura.',
@@ -79,8 +43,89 @@ const BILLING_SYSTEM_PROMPT = [
   'No inventes campos obligatorios: cada comercio tiene identificadores diferentes.',
   'invoiceUrl solo si aparece una URL de facturación visible. qrData solo si el contenido del QR puede leerse con certeza; no adivines.',
   'No transcribas artículos comprados ni texto completo del ticket. Minimiza datos personales.',
-  'Responde únicamente con el JSON solicitado.',
+  'Devuelve únicamente un objeto JSON válido con estas claves exactas: merchant, issuerRfc, date, time, total, subtotal, iva, currency, paymentMethod, cardLast4, identifiers, invoiceUrl, qrData, confidence, warnings.',
+  'warnings e identifiers siempre deben ser arreglos JSON. No agregues markdown ni texto fuera del objeto.',
 ].join(' ');
+
+interface ProviderError {
+  code?: string | number;
+  metadata?: {
+    error_type?: string;
+    provider_code?: string | number;
+  };
+}
+
+interface OpenRouterPayload {
+  model?: string;
+  error?: ProviderError;
+  choices?: Array<{
+    finish_reason?: string | null;
+    error?: ProviderError;
+    message?: { content?: string | Array<{ type?: string; text?: string }> | null };
+  }>;
+}
+
+class BillingProviderFailure extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly code: string,
+    public readonly model: string,
+  ) {
+    super(`Billing provider failed (${status || 'network'})`);
+    this.name = 'BillingProviderFailure';
+  }
+}
+
+function isFreeModel(model: string): boolean {
+  const normalized = model.trim().toLowerCase();
+  return normalized === 'openrouter/free' || normalized.endsWith(':free');
+}
+
+function configuredModels(): string[] {
+  const requested = [
+    process.env.OPENROUTER_BILLING_MODEL?.trim(),
+    process.env.OPENROUTER_RECEIPT_MODEL?.trim(),
+    process.env.OPENROUTER_RECEIPT_PAID_MODEL?.trim(),
+    process.env.OPENROUTER_RECEIPT_FALLBACK_MODEL?.trim(),
+  ].filter((model): model is string => Boolean(model));
+
+  const paid = requested.filter((model) => !isFreeModel(model));
+  const free = requested.filter(isFreeModel);
+
+  return [...new Set([
+    DEFAULT_PRIMARY_MODEL,
+    DEFAULT_SECONDARY_MODEL,
+    DEFAULT_TERTIARY_MODEL,
+    ...paid,
+    ...free,
+  ])];
+}
+
+function providerCode(error: ProviderError | undefined): string {
+  return String(
+    error?.metadata?.provider_code
+      ?? error?.metadata?.error_type
+      ?? error?.code
+      ?? 'unknown',
+  ).slice(0, 80);
+}
+
+function extractContent(payload: OpenRouterPayload | undefined): string | undefined {
+  const content = payload?.choices?.[0]?.message?.content;
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return undefined;
+  const joined = content.map((part) => typeof part?.text === 'string' ? part.text : '').filter(Boolean).join('\n');
+  return joined || undefined;
+}
+
+function normalizeJsonText(raw: string): string {
+  let value = raw.trim();
+  if (value.startsWith('```')) value = value.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  const start = value.indexOf('{');
+  const end = value.lastIndexOf('}');
+  if (start >= 0 && end > start) value = value.slice(start, end + 1);
+  return value.trim();
+}
 
 function uniqueIdentifiers(items: Array<{ key: string; value: string }>): Array<{ key: string; value: string }> {
   const seen = new Set<string>();
@@ -92,13 +137,10 @@ function uniqueIdentifiers(items: Array<{ key: string; value: string }>): Array<
   }).slice(0, 12);
 }
 
-export async function scanBillingTicketImage(image: Buffer, mimeType: string): Promise<BillingTicketScanResult> {
+async function requestBillingModel(image: Buffer, mimeType: string, model: string): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY?.trim();
   if (!apiKey) throw errors.configuration('El escáner de tickets todavía no está configurado.');
 
-  const model = process.env.OPENROUTER_BILLING_MODEL?.trim()
-    || process.env.OPENROUTER_RECEIPT_FALLBACK_MODEL?.trim()
-    || DEFAULT_MODEL;
   const dataUrl = `data:${mimeType};base64,${image.toString('base64')}`;
   const headers: Record<string, string> = {
     Authorization: `Bearer ${apiKey}`,
@@ -126,12 +168,9 @@ export async function scanBillingTicketImage(image: Buffer, mimeType: string): P
             ],
           },
         ],
-        response_format: {
-          type: 'json_schema',
-          json_schema: { name: 'billqo_billing_ticket', strict: true, schema: BILLING_SCAN_SCHEMA },
-        },
+        response_format: { type: 'json_object' },
         provider: {
-          require_parameters: true,
+          allow_fallbacks: true,
           data_collection: 'deny',
         },
         temperature: 0,
@@ -139,33 +178,41 @@ export async function scanBillingTicketImage(image: Buffer, mimeType: string): P
         stream: false,
       }),
     });
-  } catch {
-    throw errors.ai('No pudimos analizar el ticket en este momento. Inténtalo de nuevo.');
+  } catch (error) {
+    throw new BillingProviderFailure(0, error instanceof Error ? error.name : 'network_error', model);
   }
 
-  if (!response.ok) {
-    if (response.status === 429) throw errors.rateLimited('El escáner está recibiendo demasiadas solicitudes. Inténtalo de nuevo en un momento.');
-    if ([401, 402, 403, 404].includes(response.status)) throw errors.configuration('La configuración del escáner de tickets necesita atención.');
-    throw errors.ai('No pudimos analizar el ticket en este momento. Inténtalo de nuevo.');
-  }
-
-  let payload: unknown;
+  let payload: OpenRouterPayload | undefined;
   try {
-    payload = await response.json();
+    payload = await response.json() as OpenRouterPayload;
   } catch {
-    throw errors.ai('La IA no devolvió una lectura válida del ticket.');
+    payload = undefined;
   }
-  const content = (payload as { choices?: Array<{ message?: { content?: unknown } }> }).choices?.[0]?.message?.content;
-  if (typeof content !== 'string') throw errors.ai('La IA no devolvió una lectura válida del ticket.');
 
+  if (!response.ok) throw new BillingProviderFailure(response.status, providerCode(payload?.error), model);
+
+  const choice = payload?.choices?.[0];
+  const generationError = choice?.error ?? payload?.error;
+  if (generationError || choice?.finish_reason === 'error') {
+    const status = Number(generationError?.code);
+    throw new BillingProviderFailure(Number.isInteger(status) && status >= 400 ? status : 502, providerCode(generationError), payload?.model ?? model);
+  }
+
+  const content = extractContent(payload);
+  if (!content?.trim()) throw new BillingProviderFailure(502, 'empty_content', payload?.model ?? model);
+  return normalizeJsonText(content);
+}
+
+function parseBillingResult(content: string): BillingTicketScanResult {
   let parsed: unknown;
   try {
     parsed = JSON.parse(content);
   } catch {
-    throw errors.ai('La IA no devolvió una lectura válida del ticket.');
+    throw new BillingProviderFailure(502, 'invalid_json', 'response');
   }
+
   const result = scanSchema.safeParse(parsed);
-  if (!result.success) throw errors.ai('La IA no devolvió una lectura válida del ticket.');
+  if (!result.success) throw new BillingProviderFailure(502, 'invalid_schema', 'response');
 
   const data = result.data;
   return {
@@ -185,4 +232,36 @@ export async function scanBillingTicketImage(image: Buffer, mimeType: string): P
     confidence: data.confidence ?? 0,
     warnings: [...new Set(data.warnings ?? [])].slice(0, 8),
   };
+}
+
+export async function scanBillingTicketImage(image: Buffer, mimeType: string): Promise<BillingTicketScanResult> {
+  if (!process.env.OPENROUTER_API_KEY?.trim()) throw errors.configuration('El escáner de tickets todavía no está configurado.');
+
+  let lastFailure: unknown;
+  let sawRateLimit = false;
+
+  for (const model of configuredModels()) {
+    try {
+      const content = await requestBillingModel(image, mimeType, model);
+      return parseBillingResult(content);
+    } catch (error) {
+      if (error instanceof BillingProviderFailure) {
+        if ([401, 402, 403].includes(error.status)) {
+          if (error.status === 402) throw errors.configuration('La cuenta de OpenRouter necesita saldo o habilitación para analizar tickets.');
+          throw errors.configuration('La conexión de Billqo con OpenRouter necesita atención.');
+        }
+        if (error.status === 429) sawRateLimit = true;
+        lastFailure = error;
+        console.warn('Billing ticket model failed', { status: error.status, code: error.code, model });
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  if (sawRateLimit && lastFailure instanceof BillingProviderFailure && lastFailure.status === 429) {
+    throw errors.rateLimited('El escáner está recibiendo demasiadas solicitudes. Inténtalo de nuevo en un momento.');
+  }
+
+  throw errors.ai('No pudimos analizar el ticket con los modelos disponibles. Inténtalo de nuevo o captura los datos manualmente.', lastFailure);
 }

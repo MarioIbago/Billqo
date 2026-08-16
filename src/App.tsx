@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Dashboard } from './Dashboard';
 import { AuthScreen } from './components/AuthScreen';
 import { ColorBends } from './components/ColorBends';
+import DotField from './components/DotField';
 import { LandingPage } from './components/LandingPage';
 import { PrivacyPage } from './components/PrivacyPage';
 import { TermsPage } from './components/TermsPage';
@@ -34,6 +35,25 @@ export default function App() {
         iterations={1}
         intensity={1.3}
       />
+      <div
+        aria-hidden="true"
+        style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}
+      >
+        <DotField
+          dotRadius={1.5}
+          dotSpacing={14}
+          cursorRadius={500}
+          cursorForce={0.10}
+          bulgeOnly
+          bulgeStrength={67}
+          glowRadius={180}
+          sparkle={false}
+          waveAmplitude={2.6}
+          gradientFrom="rgba(248, 250, 252, 0.24)"
+          gradientTo="rgba(148, 163, 184, 0.16)"
+          glowColor="rgba(226, 232, 240, 0.24)"
+        />
+      </div>
       <HashRouter>
         <Routes>
           <Route path="/" element={user ? <Navigate to="/app" replace /> : <LandingPage />} />
