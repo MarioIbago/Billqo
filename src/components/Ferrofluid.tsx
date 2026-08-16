@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { type CSSProperties, useEffect, useRef } from 'react';
 import './Ferrofluid.css';
 
 export interface FerrofluidProps {
@@ -20,7 +20,7 @@ export interface FerrofluidProps {
   mouseStrength?: number;
   mouseRadius?: number;
   mouseDampening?: number;
-  mixBlendMode?: React.CSSProperties['mixBlendMode'];
+  mixBlendMode?: CSSProperties['mixBlendMode'];
 }
 
 type RGB = [number, number, number];
@@ -86,8 +86,7 @@ float fbm(vec2 p) {
 
 void main() {
   vec2 resolution = max(u_resolution, vec2(1.0));
-  vec2 uv = v_uv;
-  vec2 p = (uv - 0.5) * vec2(resolution.x / resolution.y, 1.0);
+  vec2 p = (v_uv - 0.5) * vec2(resolution.x / resolution.y, 1.0);
   p *= max(u_scale, 0.2) * 2.25;
 
   vec2 mouseUv = u_mouse / resolution;
@@ -96,11 +95,10 @@ void main() {
   float mouseDistance = length(p - mouseP);
   float mouseFalloff = exp(-mouseDistance * mouseDistance / max(u_mouseRadius * u_mouseRadius, 0.002));
 
-  float t = u_time;
-  vec2 flow = u_flow * t * 0.24;
+  vec2 flow = u_flow * u_time * 0.24;
   vec2 warp = vec2(
-    fbm(p * 0.82 + flow + vec2(0.0, t * 0.05)),
-    fbm(p * 0.82 - flow + vec2(7.1, -t * 0.04))
+    fbm(p * 0.82 + flow + vec2(0.0, u_time * 0.05)),
+    fbm(p * 0.82 - flow + vec2(7.1, -u_time * 0.04))
   ) - 0.5;
   warp *= (0.85 + u_turbulence * 0.9);
   warp += normalize(p - mouseP + vec2(0.0001)) * mouseFalloff * u_mouseStrength * 0.22;
@@ -108,10 +106,9 @@ void main() {
   float fieldA = fbm(p + warp * (1.15 + u_fluidity * 2.0) + flow);
   float fieldB = fbm(p * 1.18 - warp * (0.82 + u_fluidity) - flow * 0.78 + 19.3);
   float liquid = mix(fieldA, 1.0 - fieldB, 0.46);
-  liquid += sin((p.x + p.y) * 3.1 + t * 0.55) * 0.018 * u_shimmer;
+  liquid += sin((p.x + p.y) * 3.1 + u_time * 0.55) * 0.018 * u_shimmer;
 
-  float threshold = 0.5;
-  float distanceToEdge = abs(liquid - threshold);
+  float distanceToEdge = abs(liquid - 0.5);
   float rim = 1.0 - smoothstep(u_rim, u_rim + 0.055, distanceToEdge);
   rim = pow(clamp(rim, 0.0, 1.0), max(u_sharpness, 0.4));
 
@@ -136,11 +133,7 @@ function hexToRgb(value: string): RGB {
     : normalized.padEnd(6, '0').slice(0, 6);
   const number = Number.parseInt(hex, 16);
   if (!Number.isFinite(number)) return [1, 1, 1];
-  return [
-    ((number >> 16) & 255) / 255,
-    ((number >> 8) & 255) / 255,
-    (number & 255) / 255,
-  ];
+  return [((number >> 16) & 255) / 255, ((number >> 8) & 255) / 255, (number & 255) / 255];
 }
 
 function flowVector(direction: FerrofluidProps['flowDirection']): [number, number] {
@@ -236,23 +229,11 @@ export default function Ferrofluid({
 
     const uniform = (name: string) => gl.getUniformLocation(program, name);
     const uniforms = {
-      resolution: uniform('u_resolution'),
-      mouse: uniform('u_mouse'),
-      flow: uniform('u_flow'),
-      time: uniform('u_time'),
-      scale: uniform('u_scale'),
-      turbulence: uniform('u_turbulence'),
-      fluidity: uniform('u_fluidity'),
-      rim: uniform('u_rim'),
-      sharpness: uniform('u_sharpness'),
-      shimmer: uniform('u_shimmer'),
-      glow: uniform('u_glow'),
-      opacity: uniform('u_opacity'),
-      mouseStrength: uniform('u_mouseStrength'),
-      mouseRadius: uniform('u_mouseRadius'),
-      colorA: uniform('u_colorA'),
-      colorB: uniform('u_colorB'),
-      colorC: uniform('u_colorC'),
+      resolution: uniform('u_resolution'), mouse: uniform('u_mouse'), flow: uniform('u_flow'), time: uniform('u_time'),
+      scale: uniform('u_scale'), turbulence: uniform('u_turbulence'), fluidity: uniform('u_fluidity'), rim: uniform('u_rim'),
+      sharpness: uniform('u_sharpness'), shimmer: uniform('u_shimmer'), glow: uniform('u_glow'), opacity: uniform('u_opacity'),
+      mouseStrength: uniform('u_mouseStrength'), mouseRadius: uniform('u_mouseRadius'),
+      colorA: uniform('u_colorA'), colorB: uniform('u_colorB'), colorC: uniform('u_colorC'),
     };
 
     const parsedColors = colorKey.split('|').filter(Boolean).map(hexToRgb);
@@ -277,8 +258,6 @@ export default function Ferrofluid({
 
     const targetMouse = { x: -10_000, y: -10_000 };
     const currentMouse = { x: -10_000, y: -10_000 };
-    let cssWidth = 1;
-    let cssHeight = 1;
     let raf = 0;
     let last = performance.now();
     let elapsed = 0;
@@ -288,8 +267,8 @@ export default function Ferrofluid({
 
     const resize = () => {
       const rect = container.getBoundingClientRect();
-      cssWidth = Math.max(1, rect.width);
-      cssHeight = Math.max(1, rect.height);
+      const cssWidth = Math.max(1, rect.width);
+      const cssHeight = Math.max(1, rect.height);
       const width = Math.max(1, Math.round(cssWidth * pixelRatio));
       const height = Math.max(1, Math.round(cssHeight * pixelRatio));
       if (canvas.width !== width || canvas.height !== height) {
@@ -328,7 +307,6 @@ export default function Ferrofluid({
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
-
       if (!reduceMotion) raf = requestAnimationFrame(render);
     };
 
@@ -351,32 +329,7 @@ export default function Ferrofluid({
       gl.getExtension('WEBGL_lose_context')?.loseContext();
       canvas.remove();
     };
-  }, [
-    colorKey,
-    dpr,
-    flowDirection,
-    fluidity,
-    glow,
-    mouseDampening,
-    mouseInteraction,
-    mouseRadius,
-    mouseStrength,
-    opacity,
-    paused,
-    rimWidth,
-    scale,
-    sharpness,
-    shimmer,
-    speed,
-    turbulence,
-  ]);
+  }, [colorKey, dpr, flowDirection, fluidity, glow, mouseDampening, mouseInteraction, mouseRadius, mouseStrength, opacity, paused, rimWidth, scale, sharpness, shimmer, speed, turbulence]);
 
-  return (
-    <div
-      ref={containerRef}
-      className={`ferrofluid-container ${className}`.trim()}
-      style={{ mixBlendMode }}
-      aria-hidden="true"
-    />
-  );
+  return <div ref={containerRef} className={`ferrofluid-container ${className}`.trim()} style={{ mixBlendMode }} aria-hidden="true" />;
 }

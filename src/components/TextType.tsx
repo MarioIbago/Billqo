@@ -1,18 +1,11 @@
-import {
-  createElement,
-  type ElementType,
-  type HTMLAttributes,
-  type ReactNode,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { createElement, type ElementType, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import './TextType.css';
 
-export interface TextTypeProps extends HTMLAttributes<HTMLElement> {
+export interface TextTypeProps {
   text: string | string[];
   as?: ElementType;
+  id?: string;
+  className?: string;
   typingSpeed?: number;
   initialDelay?: number;
   pauseDuration?: number;
@@ -27,6 +20,7 @@ export interface TextTypeProps extends HTMLAttributes<HTMLElement> {
 export default function TextType({
   text,
   as: Component = 'span',
+  id,
   typingSpeed = 34,
   initialDelay = 80,
   pauseDuration = 1400,
@@ -37,7 +31,6 @@ export default function TextType({
   cursorClassName = '',
   startOnVisible = true,
   className = '',
-  ...props
 }: TextTypeProps) {
   const sentences = useMemo(() => (Array.isArray(text) ? text : [text]), [text]);
   const elementRef = useRef<HTMLElement | null>(null);
@@ -75,9 +68,7 @@ export default function TextType({
       }, Math.max(16, delay));
     } else if (!deleting) {
       const hasNext = sentenceIndex < sentences.length - 1;
-      if (hasNext || loop) {
-        timeout = window.setTimeout(() => setDeleting(true), pauseDuration);
-      }
+      if (hasNext || loop) timeout = window.setTimeout(() => setDeleting(true), pauseDuration);
     } else if (displayedText.length > 0) {
       timeout = window.setTimeout(() => {
         setDisplayedText((value) => value.slice(0, -1));
@@ -90,25 +81,13 @@ export default function TextType({
     return () => {
       if (timeout !== undefined) window.clearTimeout(timeout);
     };
-  }, [
-    deleting,
-    deletingSpeed,
-    displayedText,
-    initialDelay,
-    loop,
-    pauseDuration,
-    reduceMotion,
-    sentenceIndex,
-    sentences,
-    typingSpeed,
-    visible,
-  ]);
+  }, [deleting, deletingSpeed, displayedText, initialDelay, loop, pauseDuration, reduceMotion, sentenceIndex, sentences, typingSpeed, visible]);
 
   return createElement(
     Component,
     {
-      ...props,
       ref: elementRef,
+      id,
       className: `text-type ${className}`.trim(),
       'aria-label': sentences.join(' '),
     },
