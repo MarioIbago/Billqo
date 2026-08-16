@@ -1,7 +1,19 @@
 {
   "name": "billqo",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "Billqo — finanzas personales, tickets, facturación y Google Sheets con IA.",
+  "author": {
+    "name": "MarioIbago",
+    "email": "mario.ibago@gmail.com",
+    "url": "https://github.com/MarioIbago"
+  },
+  "license": "SEE LICENSE IN LICENSE.md",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MarioIbago/Billqo.git"
+  },
+  "homepage": "https://billqo.vercel.app",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
