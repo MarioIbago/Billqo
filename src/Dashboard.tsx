@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
-import { FileSpreadsheet, LoaderCircle } from 'lucide-react';
+import { FileSpreadsheet, LoaderCircle, PiggyBank } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AddTransactionModal } from './components/AddTransactionModal';
 import { BillingWorkspace } from './components/BillingWorkspace';
 import { CrystalWorkspace, type CrystalView } from './components/CrystalWorkspace';
+import { SavingsCalculatorWorkspace } from './components/SavingsCalculatorWorkspace';
 import {
   createTransaction,
   deleteAllTransactions,
@@ -95,6 +97,8 @@ export function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction>();
   const [billingOpen, setBillingOpen] = useState(false);
+  const [savingsCalculatorOpen, setSavingsCalculatorOpen] = useState(false);
+  const [moreMenuPortal, setMoreMenuPortal] = useState<HTMLElement | null>(null);
 
   useEffect(() => onAuthStateChanged(auth, (nextUser) => {
     setUser(nextUser);
@@ -107,6 +111,32 @@ export function Dashboard() {
       navigate('/auth', { replace: true });
     }
   }), [navigate]);
+
+  useEffect(() => {
+    const syncSavingsMenuSlot = () => {
+      const menu = document.querySelector<HTMLElement>('.crystal-more-menu');
+      if (!menu) {
+        setMoreMenuPortal((current) => current === null ? current : null);
+        return;
+      }
+
+      let host = menu.querySelector<HTMLElement>('[data-savings-calculator-portal="true"]');
+      if (!host) {
+        host = document.createElement('span');
+        host.dataset.savingsCalculatorPortal = 'true';
+        host.style.display = 'contents';
+        const billingButton = Array.from(menu.querySelectorAll('button')).find((button) => button.textContent?.includes('Facturación'));
+        if (billingButton?.nextSibling) menu.insertBefore(host, billingButton.nextSibling);
+        else menu.appendChild(host);
+      }
+      setMoreMenuPortal((current) => current === host ? current : host);
+    };
+
+    syncSavingsMenuSlot();
+    const observer = new MutationObserver(syncSavingsMenuSlot);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
 
   const refresh = useCallback(async () => {
     if (!user) return;
@@ -263,6 +293,9 @@ export function Dashboard() {
   if (billingOpen) {
     return <BillingWorkspace onBack={() => setBillingOpen(false)} spreadsheetUrl={connection.spreadsheetUrl} />;
   }
+  if (savingsCalculatorOpen) {
+    return <SavingsCalculatorWorkspace onBack={() => setSavingsCalculatorOpen(false)} currency={snapshot.preferences.currency} />;
+  }
 
   return (
     <>
@@ -286,6 +319,12 @@ export function Dashboard() {
         onSignOut={() => void signOut(auth)}
         busy={loading}
       />
+      {moreMenuPortal && createPortal(
+        <button type="button" onClick={() => setSavingsCalculatorOpen(true)}>
+          <PiggyBank size={16} />Ahorro
+        </button>,
+        moreMenuPortal,
+      )}
       {isModalOpen && (
         <AddTransactionModal
           transaction={editingTransaction}
