@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import {Analytics} from '@vercel/analytics/react';
 import App from './App.tsx';
 import {InterfacePrivacyControls} from './components/InterfacePrivacyControls';
+import {OfflineStatus} from './components/OfflineStatus';
 import {installClientGuards} from './lib/clientGuards';
 import './index.css';
 import './mobile-polish.css';
@@ -10,6 +11,7 @@ import './billqo-premium.css';
 import './billqo-interactions.css';
 import './billqo-interface-fixes.css';
 import './billqo-requested-ui.css';
+import './pwa.css';
 
 const APP_BASE_PATH = '/app';
 
@@ -34,6 +36,18 @@ function canonicalizeClientUrl(): void {
   }
 }
 
+function registerPwa(): void {
+  if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register('/sw.js', {
+      scope: '/',
+      updateViaCache: 'none',
+    }).catch((error: unknown) => {
+      console.warn('Billqo PWA service worker could not be registered.', error);
+    });
+  }, { once: true });
+}
+
 if (mustUseCanonicalLocalOrigin) {
   const canonicalUrl = new URL(window.location.href);
   canonicalUrl.hostname = '127.0.0.1';
@@ -44,10 +58,12 @@ if (mustUseCanonicalLocalOrigin) {
   // /privacy -> /app/#/privacy, /terms -> /app/#/terms, /auth -> /app/#/auth.
   canonicalizeClientUrl();
   installClientGuards();
+  registerPwa();
 
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <App />
+      <OfflineStatus />
       <InterfacePrivacyControls />
       <Analytics />
     </StrictMode>,
