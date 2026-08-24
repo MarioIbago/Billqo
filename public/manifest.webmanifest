@@ -1,0 +1,23 @@
+{
+  "id": "/app/",
+  "name": "Billqo — Finanzas personales",
+  "short_name": "Billqo",
+  "description": "Tus finanzas en cualquier lugar, incluso sin conexión.",
+  "lang": "es-MX",
+  "start_url": "/app/#/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

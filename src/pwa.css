@@ -1,0 +1,46 @@
+.billqo-offline-status {
+  position: fixed;
+  z-index: 120;
+  top: max(10px, env(safe-area-inset-top));
+  left: 50%;
+  display: flex;
+  max-width: min(92vw, 540px);
+  transform: translateX(-50%);
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(18, 18, 20, 0.86);
+  padding: 8px 12px;
+  color: rgba(255, 255, 255, 0.76);
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  backdrop-filter: blur(22px) saturate(160%);
+  font-size: 11px;
+  line-height: 1.35;
+  pointer-events: none;
+}
+
+.billqo-offline-status strong {
+  color: #fff;
+}
+
+html[data-billqo-offline='true'] label:has(input[type='file'][capture]) {
+  opacity: 0.42;
+  pointer-events: none;
+  filter: saturate(0.5);
+}
+
+html[data-billqo-offline='true'] label:has(input[type='file'][capture])::after {
+  content: ' · requiere internet';
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+@media (display-mode: standalone) {
+  body {
+    min-height: 100dvh;
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
