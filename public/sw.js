@@ -7,9 +7,6 @@ const CORE_URLS = [
   '/index.html',
   '/manifest.webmanifest',
   '/favicon.svg',
-  '/pwa/icon-180.png',
-  '/pwa/icon-192.png',
-  '/pwa/icon-512.png',
 ];
 
 async function fetchAndCache(cache, url) {
@@ -114,7 +111,6 @@ self.addEventListener('fetch', (event) => {
 
   if (
     url.pathname.startsWith('/assets/')
-    || url.pathname.startsWith('/pwa/')
     || url.pathname === '/favicon.svg'
     || url.pathname === '/manifest.webmanifest'
   ) {
