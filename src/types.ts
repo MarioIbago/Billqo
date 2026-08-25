@@ -88,6 +88,21 @@ export interface ReceiptScanResult {
   warnings: string[];
 }
 
+export type FinancialDocumentType =
+  | 'ticket'
+  | 'receipt'
+  | 'invoice'
+  | 'payment_proof'
+  | 'bank_transfer'
+  | 'bank_statement'
+  | 'bank_movements';
+
+export interface FinancialDocumentScanResult {
+  documentType: FinancialDocumentType;
+  movements: ReceiptScanResult[];
+  warnings: string[];
+}
+
 // Preserves the existing component-facing name while adding the new data model.
 export type Transaction = FinancialTransaction;
 

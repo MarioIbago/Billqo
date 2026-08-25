@@ -2,7 +2,7 @@ import express, { Router } from 'express';
 import { z } from 'zod';
 import { errors } from './errors';
 import { assertReceiptImage } from './receiptScanner';
-import { scanReceiptImageV2 } from './receiptScannerV2';
+import { scanFinancialDocumentImage } from './receiptScannerV2';
 
 const router = Router();
 const preferredTypeSchema = z.enum(['income', 'expense']).optional();
@@ -34,7 +34,7 @@ router.post('/', express.raw({ type: () => true, limit: '6mb' }), async (req, re
 
     const allowedCategories = parseCategoriesHeader(req.header('X-Billqo-Categories'));
     const mimeType = assertReceiptImage(req.body, req.header('Content-Type'));
-    const result = await scanReceiptImageV2({
+    const result = await scanFinancialDocumentImage({
       image: req.body,
       mimeType,
       allowedCategories,

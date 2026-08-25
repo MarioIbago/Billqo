@@ -42,15 +42,9 @@ function errorMessage(error: unknown): string {
 }
 
 function googleCallbackMessage(result: string | null): string | undefined {
-  if (result === 'reauthorization_required') {
-    return 'La autorizacion de Google no se completo o expiro. Vuelve a conectar Google Sheets.';
-  }
-  if (result === 'configuration_error') {
-    return 'No pudimos completar la conexion con Google por una configuracion del servicio. Intentalo mas tarde.';
-  }
-  if (result === 'error') {
-    return 'No pudimos completar la conexion con Google. Vuelve a intentarlo.';
-  }
+  if (result === 'reauthorization_required') return 'La autorizacion de Google no se completo o expiro. Vuelve a conectar Google Sheets.';
+  if (result === 'configuration_error') return 'No pudimos completar la conexion con Google por una configuracion del servicio. Intentalo mas tarde.';
+  if (result === 'error') return 'No pudimos completar la conexion con Google. Vuelve a intentarlo.';
   return undefined;
 }
 
@@ -103,13 +97,8 @@ export function Dashboard() {
   useEffect(() => onAuthStateChanged(auth, (nextUser) => {
     setUser(nextUser);
     setAuthReady(true);
-    if (nextUser) {
-      // Do not render the disconnected gate until the real Sheets state has
-      // been checked. The default connection value is only a placeholder.
-      setConnectionChecked(false);
-    } else {
-      navigate('/auth', { replace: true });
-    }
+    if (nextUser) setConnectionChecked(false);
+    else navigate('/auth', { replace: true });
   }), [navigate]);
 
   useEffect(() => {
@@ -119,7 +108,6 @@ export function Dashboard() {
         setMoreMenuPortal((current) => current === null ? current : null);
         return;
       }
-
       let host = menu.querySelector<HTMLElement>('[data-savings-calculator-portal="true"]');
       if (!host) {
         host = document.createElement('span');
@@ -131,7 +119,6 @@ export function Dashboard() {
       }
       setMoreMenuPortal((current) => current === host ? current : host);
     };
-
     syncSavingsMenuSlot();
     const observer = new MutationObserver(syncSavingsMenuSlot);
     observer.observe(document.body, { childList: true, subtree: true });
@@ -145,19 +132,16 @@ export function Dashboard() {
     try {
       const currentConnection = await getConnection();
       setConnection(currentConnection);
-
       if (!['authorized', 'provisioning', 'connected'].includes(currentConnection.status)) {
         setSnapshot(undefined);
         return;
       }
-
       const verifiedConnection = await ensureFinancialStorage();
       setConnection(verifiedConnection);
       if (verifiedConnection.status !== 'connected') {
         setSnapshot(undefined);
         return;
       }
-
       setSnapshot(await getFinancialSnapshot());
     } catch (caught) {
       setError(errorMessage(caught));
@@ -208,9 +192,16 @@ export function Dashboard() {
     setEditingTransaction(undefined);
   };
 
-  const saveTransaction = async (payload: TransactionPayload) => {
-    if (editingTransaction) await patchTransaction(editingTransaction.id, editingTransaction.updatedAt, payload);
-    else await createTransaction(payload, clientId());
+  const saveTransaction = async (payload: TransactionPayload | TransactionPayload[]) => {
+    if (editingTransaction) {
+      if (Array.isArray(payload)) throw new Error('No se puede importar un lote mientras editas un movimiento.');
+      await patchTransaction(editingTransaction.id, editingTransaction.updatedAt, payload);
+    } else {
+      const transactions = Array.isArray(payload) ? payload : [payload];
+      for (const transactionPayload of transactions) {
+        await createTransaction(transactionPayload, clientId());
+      }
+    }
     await refresh();
     closeModal();
   };
@@ -221,14 +212,7 @@ export function Dashboard() {
     if (!category) throw new Error('La categoria seleccionada ya no esta disponible.');
     const existing = snapshot.budgets.find((item) => item.categoryId === categoryId);
     const { startDate, endDate } = monthBounds();
-    await saveBudget(existing?.id ?? clientId(), {
-      categoryId,
-      amount,
-      period: 'Mensual',
-      startDate,
-      endDate,
-      active: true,
-    }, existing?.updatedAt);
+    await saveBudget(existing?.id ?? clientId(), { categoryId, amount, period: 'Mensual', startDate, endDate, active: true }, existing?.updatedAt);
     await refresh();
   };
 
@@ -290,12 +274,8 @@ export function Dashboard() {
   if (!snapshot || connection.status !== 'connected') {
     return <StorageGateScreen connection={connection} message={error ?? oauthResultMessage} onConnect={() => void connectGoogle()} onRetry={() => void refresh()} />;
   }
-  if (billingOpen) {
-    return <BillingWorkspace onBack={() => setBillingOpen(false)} spreadsheetUrl={connection.spreadsheetUrl} />;
-  }
-  if (savingsCalculatorOpen) {
-    return <SavingsCalculatorWorkspace onBack={() => setSavingsCalculatorOpen(false)} currency={snapshot.preferences.currency} />;
-  }
+  if (billingOpen) return <BillingWorkspace onBack={() => setBillingOpen(false)} spreadsheetUrl={connection.spreadsheetUrl} />;
+  if (savingsCalculatorOpen) return <SavingsCalculatorWorkspace onBack={() => setSavingsCalculatorOpen(false)} currency={snapshot.preferences.currency} />;
 
   return (
     <>
@@ -320,15 +300,14 @@ export function Dashboard() {
         busy={loading}
       />
       {moreMenuPortal && createPortal(
-        <button type="button" onClick={() => setSavingsCalculatorOpen(true)}>
-          <PiggyBank size={16} />Ahorro
-        </button>,
+        <button type="button" onClick={() => setSavingsCalculatorOpen(true)}><PiggyBank size={16} />Ahorro</button>,
         moreMenuPortal,
       )}
       {isModalOpen && (
         <AddTransactionModal
           transaction={editingTransaction}
           categories={snapshot.categories}
+          existingTransactions={snapshot.transactions.filter((item) => !item.deletedAt)}
           onClose={closeModal}
           onSave={saveTransaction}
         />
