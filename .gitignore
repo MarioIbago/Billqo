@@ -10,6 +10,11 @@ api/[...path].cjs
 .DS_Store
 *.log
 
+# Local AI/Codex scratch artifacts. Keep these out of source control.
+.codex/
+.codex-*
+*.codex
+
 # Runtime configuration and credential exports. Never commit service-account
 # keys or downloaded OAuth client secrets.
 .env*
