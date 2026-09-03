@@ -7,7 +7,6 @@ billqo-44f932ac4cd8.json
 
 # Local diagnostics and non-runtime source material
 *.log
-.codex-*
 archive/
 design-reference/
 tests/
