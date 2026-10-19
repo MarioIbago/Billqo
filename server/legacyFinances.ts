@@ -13,13 +13,13 @@ function value(cell: OptionalCell): string {
 
 function finite(cell: OptionalCell): number | undefined {
   if (cell === '' || cell === null || cell === undefined || typeof cell === 'boolean') return undefined;
-  const number = typeof cell === 'number' ? cell : Number(value(cell).replace(/[$,\\s]/g, ''));
+  const number = typeof cell === 'number' ? cell : Number(value(cell).replace(/[$,\s]/g, ''));
   return Number.isFinite(number) ? number : undefined;
 }
 
 function headerIndex(rows: OptionalRows, sheet: string, required: string[], issues: ValidationIssue[]): Map<string, number> | undefined {
   if (rows.length === 0) return undefined;
-  const columns = new Map((rows[0] ?? []).map((cell, index) => [value(cell), index]));
+  const columns = new Map<string, number>((rows[0] ?? []).map((cell, index): [string, number] => [value(cell), index]));
   const missing = required.filter(name => !columns.has(name));
   if (missing.length) {
     issues.push({ sheet, row: 1, message: `Faltan encabezados: ${missing.join(', ')}. Se omitió esta sección opcional.` });
@@ -61,7 +61,7 @@ export function parseOptionalFinanceSheets(openingRows: OptionalRows = [], histo
       const cutoffDate = value(get(row, openingHeaders, 'fecha_corte'));
       if (!id || !account || !group || !/^[A-Z]{3}$/.test(currency) ||
         amount === undefined || exchangeRateMXN === undefined || exchangeRateMXN <= 0 ||
-        equivalentMXN === undefined || !/^\\d{4}-\\d{2}-\\d{2}$/.test(cutoffDate) ||
+        equivalentMXN === undefined || !/^\d{4}-\d{2}-\d{2}$/.test(cutoffDate) ||
         Number.isNaN(Date.parse(cutoffDate))) {
         issues.push({ sheet: OPENING_BALANCES_TAB, row: i + 1, message: 'Saldo inicial incompleto o inválido; no se contabilizó.' });
         continue;
@@ -100,7 +100,7 @@ export function parseOptionalFinanceSheets(openingRows: OptionalRows = [], histo
       }
       seen.add(id);
       const rawDate = value(get(row, historyHeaders, 'fecha_real'));
-      const date = /^\\d{4}-\\d{2}-\\d{2}$/.test(rawDate) && !Number.isNaN(Date.parse(rawDate)) ? rawDate : null;
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) && !Number.isNaN(Date.parse(rawDate)) ? rawDate : null;
       historicalBusinessEvents.push({
         id, date,
         type: value(get(row, historyHeaders, 'tipo_evento')),
