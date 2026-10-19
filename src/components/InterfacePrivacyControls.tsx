@@ -76,7 +76,7 @@ export function InterfacePrivacyControls() {
       type="button"
       className="billqo-balance-visibility"
       aria-pressed={balanceHidden}
-      aria-label={balanceHidden ? 'Mostrar balance del periodo' : 'Ocultar balance del periodo'}
+      aria-label={balanceHidden ? 'Mostrar importes' : 'Ocultar importes'}
       title={balanceHidden ? 'Mostrar balance' : 'Ocultar balance'}
       onClick={() => setBalanceHidden((hidden) => !hidden)}
     >

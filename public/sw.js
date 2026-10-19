@@ -1,4 +1,4 @@
-const VERSION = 'billqo-pwa-v1';
+const VERSION = 'billqo-pwa-v2';
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const CORE_URLS = [

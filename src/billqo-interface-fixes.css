@@ -131,3 +131,20 @@ html.billqo-legal-route .ferrofluid-container {
     transition: none;
   }
 }
+
+/* Patrimony amounts are private under the existing eye toggle. */
+html.billqo-balance-hidden .billqo-private-amount {
+  position: relative;
+  color: transparent !important;
+  text-shadow: none !important;
+  user-select: none;
+}
+html.billqo-balance-hidden .billqo-private-amount::after {
+  content: '••••';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  color: rgba(255,255,255,.92);
+  transform: translateY(-50%);
+  font-size: 13px;
+}
