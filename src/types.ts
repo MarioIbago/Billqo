@@ -205,7 +205,39 @@ export interface AiInsightsResponse {
   isAiGenerated: boolean;
 }
 
+/** Optional opening positions: these are assets at a cutoff, never income. */
+export interface OpeningBalance {
+  id: string;
+  group: string;
+  account: string;
+  entity: string;
+  currency: string;
+  amount: number;
+  exchangeRateMXN: number;
+  equivalentMXN: number;
+  cutoffDate: string;
+  notes: string;
+}
+
+export interface HistoricalBusinessEvent {
+  id: string;
+  date: string | null;
+  type: string;
+  description: string;
+  business: string;
+  account: string;
+  channel: string;
+  cashFlowMXN: number;
+  units: number;
+  source: string;
+  notes: string;
+  includedInOpeningBalance: true;
+}
+
 export interface FinancialSnapshot {
+  /** Populated only for explicitly opted-in spreadsheets; absent on legacy/new sheets. */
+  openingBalances?: OpeningBalance[];
+  historicalBusinessEvents?: HistoricalBusinessEvent[];
   transactions: Transaction[];
   categories: Category[];
   budgets: CategoryBudget[];

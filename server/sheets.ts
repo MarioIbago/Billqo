@@ -17,6 +17,7 @@ import type {
   ValidationIssue,
 } from '../src/types';
 import { getFinancialSheetTitle, getOwnerKey } from './config';
+import { HISTORICAL_EVENTS_TAB, OPENING_BALANCES_CONFIG_KEY, OPENING_BALANCES_TAB, parseOptionalFinanceSheets, type OptionalFinanceResult, type OptionalRows } from './legacyFinances';
 import {
   acquireProvisionLease,
   getConnection,
@@ -746,6 +747,41 @@ async function getConnectedSpreadsheet(uid: string): Promise<{ client: GoogleOAu
   return { client, spreadsheetId: connection.spreadsheetId };
 }
 
+/** Read imported patrimony only for files that opt in via CONFIGURACIÓN.
+ * Old and newly provisioned files keep the exact existing financial API contract. */
+async function loadOptedInFinancialHistory(
+  sheets: ReturnType<typeof getSheets>,
+  spreadsheetId: string,
+): Promise<OptionalFinanceResult> {
+  const empty = parseOptionalFinanceSheets();
+  try {
+    const metadata = await withGoogleReadRetry(() => sheets.spreadsheets.get({
+      spreadsheetId,
+      fields: 'sheets.properties(title)',
+    }));
+    const available = new Set((metadata.data.sheets ?? []).map(sheet => sheet.properties?.title).filter(Boolean));
+    if (!available.has(OPENING_BALANCES_TAB) && !available.has(HISTORICAL_EVENTS_TAB)) return empty;
+    const requested: string[] = [];
+    if (available.has(OPENING_BALANCES_TAB)) requested.push(a1(OPENING_BALANCES_TAB, 'A1:O2000'));
+    if (available.has(HISTORICAL_EVENTS_TAB)) requested.push(a1(HISTORICAL_EVENTS_TAB, 'A1:N2000'));
+    const response = await withGoogleReadRetry(() => sheets.spreadsheets.values.batchGet({
+      spreadsheetId,
+      ranges: requested,
+      valueRenderOption: 'UNFORMATTED_VALUE',
+    }));
+    let index = 0;
+    const openingRows = available.has(OPENING_BALANCES_TAB)
+      ? (response.data.valueRanges?.[index++]?.values ?? []) as OptionalRows : [];
+    const historyRows = available.has(HISTORICAL_EVENTS_TAB)
+      ? (response.data.valueRanges?.[index++]?.values ?? []) as OptionalRows : [];
+    return parseOptionalFinanceSheets(openingRows, historyRows);
+  } catch (error) {
+    // Optional user-owned tab corruption/service failures must not block normal finance.
+    console.warn('Optional financial history unavailable', error instanceof Error ? error.name : 'unknown');
+    return { ...empty, issues: [{ sheet: OPENING_BALANCES_TAB, row: 1, message: 'No fue posible leer los saldos históricos opcionales; MOVIMIENTOS sigue disponible.' }] };
+  }
+}
+
 export async function loadFinancialSnapshot(uid: string): Promise<FinancialSnapshot> {
   const { client, spreadsheetId } = await getConnectedSpreadsheet(uid);
   try {
@@ -767,6 +803,9 @@ export async function loadFinancialSnapshot(uid: string): Promise<FinancialSnaps
     const budgetResult = parseBudgets((ranges[2]?.values ?? []) as SheetRow[], categoryResult.categories);
     const recurrenceResult = parseRecurrences((ranges[3]?.values ?? []) as SheetRow[]);
     const preferences = parsePreferences((ranges[4]?.values ?? []) as SheetRow[]);
+    const optionalEnabled = ((ranges[4]?.values ?? []) as SheetRow[])
+      .some(row => clean(row[0]) === OPENING_BALANCES_CONFIG_KEY && clean(row[1]) === OPENING_BALANCES_TAB);
+    const extra = optionalEnabled ? await loadOptedInFinancialHistory(sheets, spreadsheetId) : undefined;
     const budgets = budgetResult.budgets.map((budget) => ({
       ...budget,
       spentAmount: transactionResult.transactions
@@ -785,7 +824,8 @@ export async function loadFinancialSnapshot(uid: string): Promise<FinancialSnaps
       recurrences: recurrenceResult.recurrences.filter((recurrence) => !recurrence.deletedAt),
       preferences,
       analytics: calculateAnalytics(transactionResult.transactions, budgets, { timezone: preferences.timezone }),
-      validationIssues: [...categoryResult.issues, ...transactionResult.issues, ...budgetResult.issues, ...recurrenceResult.issues],
+      validationIssues: [...categoryResult.issues, ...transactionResult.issues, ...budgetResult.issues, ...recurrenceResult.issues, ...(extra?.issues ?? [])],
+      ...(extra ? { openingBalances: extra.openingBalances, historicalBusinessEvents: extra.historicalBusinessEvents } : {}),
       syncedAt: nowIso(),
     };
     await touchLastSync(uid);

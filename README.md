@@ -81,3 +81,10 @@ Para probar visualmente el flujo: landing -> autenticacion Firebase -> autorizar
 - `server/auth.ts`: verificacion de ID tokens de Firebase y rechazo explicito de cualquier proveedor que no sea `google.com`.
 
 Las escrituras directas de Firestore desde el navegador fueron eliminadas. Las reglas de Firestore bloquean el acceso de clientes; el backend usa Firebase Admin solo para identidad y metadatos tecnicos.
+
+
+## Saldos iniciales e historial de negocios (opcional)
+
+Los archivos existentes y los nuevos siguen utilizando las cinco pestañas financieras estándar. Solo se activa la lectura de datos patrimoniales si `CONFIGURACIÓN` tiene `fuente_patrimonial = SALDOS_INICIALES` y la pestaña existe. La pestaña `SALDOS_INICIALES` contiene los encabezados `id_cuenta, grupo, cuenta, moneda, saldo_inicial, tipo_cambio_mxn, equivalente_mxn, fecha_corte` (junto con otros campos opcionales). `HISTORIAL_CONTABLE` permite eventos previos al corte etiquetados como `ya_reflejado_en_corte = TRUE`.
+
+Estos datos son **informativos y por usuario**. No se crean saldos artificiales en `MOVIMIENTOS`, no se mezclan compras históricas con gastos nuevos y los cálculos existentes de ingresos/gastos permanecen intactos. Los saldos solo se muestran al corte; no se anuncian como saldos vivos. El selector opcional de cuentas nuevas admite cuentas en MXN; las divisas permanecen como posiciones al corte hasta contar con un contrato explícito de moneda por movimiento.

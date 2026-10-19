@@ -307,6 +307,7 @@ export function Dashboard() {
         <AddTransactionModal
           transaction={editingTransaction}
           categories={snapshot.categories}
+          openingBalances={snapshot.openingBalances}
           existingTransactions={snapshot.transactions.filter((item) => !item.deletedAt)}
           onClose={closeModal}
           onSave={saveTransaction}

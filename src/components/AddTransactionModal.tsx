@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import type {
   Category,
+  OpeningBalance,
   CostType,
   FinancialDocumentScanResult,
   FixedVariable,
@@ -33,6 +34,7 @@ interface AddTransactionModalProps {
   onClose: () => void;
   onSave: (payload: TransactionPayload | TransactionPayload[]) => Promise<void> | void;
   categories: Category[];
+  openingBalances?: OpeningBalance[];
   existingTransactions?: Transaction[];
   transaction?: Transaction;
 }
@@ -114,6 +116,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   onClose,
   onSave,
   categories,
+  openingBalances = [],
   existingTransactions = [],
   transaction,
 }) => {
@@ -127,6 +130,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   const [amount, setAmount] = useState(transaction ? String(transaction.amount) : '');
   const [date, setDate] = useState(transaction?.date ?? new Date().toISOString().slice(0, 10));
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(transaction?.paymentMethod ?? 'Tarjeta Débito');
+  const [account, setAccount] = useState(transaction?.account ?? '');
   const [costType, setCostType] = useState<CostType>(transaction?.costType ?? 'Variable');
   const [fixedVariable, setFixedVariable] = useState<FixedVariable>(transaction?.fixedVariable ?? 'Variable');
   const [necessity, setNecessity] = useState<Necessity>(transaction?.necessity ?? 'Necesario');
@@ -344,6 +348,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       influence: type === 'expense' ? influence : undefined,
       date,
       paymentMethod,
+      account: account || undefined,
       notes: notes.trim() || undefined,
       recurring: transaction?.recurring ?? false,
     };
@@ -530,6 +535,15 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               </div>
 
               <label className="block min-w-0"><span className={labelClass}>Método</span>{renderSelect(paymentMethod, (value) => setPaymentMethod(value as PaymentMethod), paymentMethods.map((method) => ({ value: method, label: method })))}</label>
+              {openingBalances.some((item) => item.currency === 'MXN') && (
+                <label className="block min-w-0">
+                  <span className={labelClass}>Cuenta o negocio (opcional)</span>
+                  {renderSelect(account, setAccount,
+                    [{ value: '', label: 'Sin cuenta específica' }, ...openingBalances
+                      .filter((item) => item.currency === 'MXN')
+                      .map((item) => ({ value: item.id, label: item.account }))])}
+                </label>
+              )}
 
               <button type="button" className={`flex min-h-12 min-w-0 items-center gap-2.5 rounded-[17px] px-3 py-2.5 text-left transition active:scale-[0.995] ${glassControl}`} onClick={() => setAdvancedOpen((open) => !open)} aria-expanded={advancedOpen}>
                 <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[12px] bg-white/[0.07] text-white/55"><SlidersHorizontal size={16} /></span>

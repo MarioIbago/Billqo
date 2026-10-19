@@ -419,6 +419,45 @@ export function CrystalWorkspace({ snapshot, connection, user, activeView, onVie
         <div className="crystal-metric-grid"><div><span><i className="metric-dot is-income" />Ingresos</span><strong>{formatMoney(analytics.totalIncome, snapshot.preferences.currency)}</strong></div><div><span><i className="metric-dot is-expense" />Gastos</span><strong>{formatMoney(analytics.totalExpenses, snapshot.preferences.currency)}</strong></div><div><span><i className="metric-dot is-balance" />Promedio diario</span><strong>{formatMoney(analytics.averageDailyExpense, snapshot.preferences.currency)}</strong></div></div>
         <div className="crystal-mini-bars" aria-label="Gastos agregados por semana">{(analytics.weeklyExpenses.length ? analytics.weeklyExpenses : []).slice(-8).map((item) => <i key={item.week} style={{ height: `${Math.max(8, Math.min(100, analytics.totalExpenses ? (item.amount / analytics.totalExpenses) * 100 : 8))}%` }} />)}</div>
       </section>
+      {(snapshot.openingBalances?.length ?? 0) > 0 && (
+        <section className="crystal-panel" aria-labelledby="patrimony-cutoff-title">
+          <PanelHeading title="Patrimonio registrado" detail="Fotografía de saldos, no ingresos del periodo" />
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <strong id="patrimony-cutoff-title" className="block text-2xl font-semibold text-white">
+                {formatMoney(snapshot.openingBalances!.reduce((sum, item) => sum + item.equivalentMXN, 0), 'MXN')}
+              </strong>
+              <small className="text-white/45">Al corte del {snapshot.openingBalances![0]?.cutoffDate ?? 'último registro'} · equivalentes MXN</small>
+            </div>
+            <span className="text-xs text-white/45">{snapshot.openingBalances!.length} cuentas registradas</span>
+          </div>
+          <p className="mt-2 text-xs leading-5 text-white/45">Estos saldos iniciales no se agregan a los ingresos, gastos ni balance del periodo. Las compras y ventas anteriores al corte son únicamente contexto histórico.</p>
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {snapshot.openingBalances!.map((item) => (
+              <div key={item.id} className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0"><strong className="block truncate text-xs text-white/85">{item.account}</strong><small className="text-white/35">{item.group} · {item.currency}</small></div>
+                  <strong className="shrink-0 text-xs text-white/85">{formatMoney(item.equivalentMXN, 'MXN')}</strong>
+                </div>
+                {item.currency !== 'MXN' && <small className="text-white/45">{item.amount.toLocaleString('es-MX')} {item.currency} · TC {item.exchangeRateMXN}</small>}
+              </div>
+            ))}
+          </div>
+          {(snapshot.historicalBusinessEvents?.length ?? 0) > 0 && (
+            <div className="mt-4 border-t border-white/10 pt-3">
+              <strong className="text-xs text-white/75">Historial de negocios documentado</strong>
+              {Array.from(new Set(snapshot.historicalBusinessEvents!.map(item => item.business).filter(Boolean))).map((business) => {
+                const records = snapshot.historicalBusinessEvents!.filter(item => item.business === business);
+                const sales = records.filter(item => item.cashFlowMXN > 0).reduce((sum, item) => sum + item.cashFlowMXN, 0);
+                const purchases = records.filter(item => item.cashFlowMXN < 0).reduce((sum, item) => sum - item.cashFlowMXN, 0);
+                return <p key={business} className="mt-1 text-xs leading-5 text-white/50">
+                  {business}: ventas {formatMoney(sales, 'MXN')}, compras {formatMoney(purchases, 'MXN')}, diferencia histórica {formatMoney(sales - purchases, 'MXN')}. No se suma de nuevo a la caja.
+                </p>;
+              })}
+            </div>
+          )}
+        </section>
+      )}
       <div className="crystal-dashboard-grid">
         <section className="crystal-panel"><PanelHeading title="Últimos movimientos" detail="Datos sincronizados desde Google Sheets" action={<button type="button" className="crystal-text-button" onClick={() => changeView('movements')}>Ver todos <ArrowUpRight size={13} /></button>} />{periodTransactions.length === 0 ? <EmptyState title="Tu historial está vacío" detail="Registra tu primer ingreso o gasto para ver el resumen." onAdd={onOpenAdd} /> : <div className="crystal-transaction-list">{periodTransactions.slice(0, 5).map((transaction) => <TransactionRow key={transaction.id} transaction={transaction} currency={snapshot.preferences.currency} timezone={snapshot.preferences.timezone} />)}</div>}</section>
         <section className="crystal-panel"><PanelHeading title="Gastos por categoría" detail={slices.length ? `Distribución de ${periodLabel}` : 'Se construye con tus movimientos'} /><Donut slices={slices} total={analytics.totalExpenses} currency={snapshot.preferences.currency} /></section>
