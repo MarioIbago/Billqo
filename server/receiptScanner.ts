@@ -40,6 +40,7 @@ export const RECEIPT_SYSTEM_PROMPT = [
   'Extrae únicamente información visualmente sustentada.',
   'Determina si el documento representa un ingreso o un gasto; cuando no exista evidencia suficiente usa el tipo preferido indicado por la aplicación.',
   'El monto debe ser el total final efectivamente pagado o recibido, no subtotal, impuestos, descuentos, cambio ni saldo pendiente.',
+  'Si un cupón de descuento aparece debajo de un producto, réstalo del precio de ese producto para calcular el total neto pagado; no registres el cupón como gasto separado ni lo restes dos veces si ya está incluido en el total impreso.',
   'No inventes datos ilegibles y usa null cuando no exista evidencia suficiente.',
   'La descripción debe ser breve y no superar 200 caracteres.',
   'Si recibes categorías permitidas, category debe ser exactamente uno de esos nombres o null.',
