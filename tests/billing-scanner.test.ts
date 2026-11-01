@@ -76,6 +76,47 @@ describe('billing scanner', () => {
     expect(secondBody.model).toBe('google/gemini-2.5-flash');
   });
 
+
+  it('reconciles visible coupons with the final printed price, not the gross article amount', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-key';
+    const ticket = {
+      ...validTicket(),
+      total: 125.5,
+      receiptPricing: {
+        preDiscountTotal: 125.5,
+        couponDiscounts: [{ item: 'Producto de arriba', amount: 20.5 }],
+        printedTotal: 105,
+      },
+    };
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      choices: [{ message: { content: JSON.stringify(ticket) } }],
+    }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await scanBillingTicketImage(jpegBuffer(), 'image/jpeg');
+    expect(result.total).toBe(105);
+    const body = JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body));
+    expect(body.messages[0].content).toMatch(/cup[oó]n/i);
+    expect(body.messages[0].content).toMatch(/art[ií]culo de arriba/i);
+  });
+
+  it('does not apply a second discount to an already-paid total', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-key';
+    const ticket = {
+      ...validTicket(),
+      total: 105,
+      receiptPricing: {
+        preDiscountTotal: 125.5,
+        couponDiscounts: [{ item: 'Producto', amount: 20.5 }],
+        printedTotal: 105,
+      },
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      choices: [{ message: { content: JSON.stringify(ticket) } }],
+    }), { status: 200 })));
+    expect((await scanBillingTicketImage(jpegBuffer(), 'image/jpeg')).total).toBe(105);
+  });
+
   it('stops immediately for account billing failures', async () => {
     process.env.OPENROUTER_API_KEY = 'test-key';
     const fetchMock = vi.fn().mockResolvedValue(
